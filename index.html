@@ -102,8 +102,8 @@
 .gifts{padding:clamp(90px,12vw,150px) 0;background:var(--cream)}
 .gifts .head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
 .gifts h2{font-size:clamp(54px,7.5vw,112px)}
-.gset{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px}
-@media (max-width:900px){.gset{grid-template-columns:1fr}}
+.gset{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:44px}
+@media (max-width:1000px){.gset{grid-template-columns:1fr 1fr}}@media (max-width:600px){.gset{grid-template-columns:1fr}}
 .gcard{background:#fff;border-radius:28px;padding:14px 14px 26px}
 .gph{position:relative;aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:var(--oat)}
 .gph img{width:100%;height:100%;object-fit:cover}
@@ -242,6 +242,7 @@
     <article class="gcard rv"><div class="gph"><img data-photo="pastryshelf" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Confectioner's Box</h3><p>House-made caramels, nuts and chocolates from our retail counter.</p></article>
     <article class="gcard rv"><div class="gph"><img data-photo="loaves" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Baker's Basket</h3><p>Our signature loaves and stix, ready for the table.</p></article>
     <article class="gcard rv"><div class="gph"><img data-photo="natas2" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Patisserie Box</h3><p>A selection of our favourite pastries, boxed to give.</p></article>
+    <article class="gcard rv"><div class="gph"><img data-photo="tools" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Home Baker's Kit</h3><p>Our own île de païn lame, scraper and baking tools, for sourdough at home.</p></article>
   </div>
 </div></section>
 
@@ -342,7 +343,7 @@ mt.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{mt.queryS
 const imgs=[...document.querySelectorAll("#reel img")];let ri=0;
 if(!reduce)setInterval(()=>{imgs[ri].classList.remove("on");ri=(ri+1)%imgs.length;imgs[ri].classList.add("on")},3800);
 
-const strip=document.getElementById("strip"),picks=["frenchtoast","display","croissants","terrace"].map(id=>PHOTOS.find(p=>p.id===id));
+const strip=document.getElementById("strip"),picks=["croissants","pastries","loaves","nata"].map(id=>PHOTOS.find(p=>p.id===id));
 strip.innerHTML=picks.map(p=>`<button aria-label="Open photo: ${p.alt}"><img src="${p.src}" alt="${p.alt}" loading="lazy"></button>`).join("");
 strip.querySelectorAll("button").forEach((b,i)=>b.onclick=()=>IDP.lightbox(picks,i));
 

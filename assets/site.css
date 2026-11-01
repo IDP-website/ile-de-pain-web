@@ -120,3 +120,4 @@ footer .credit{margin-top:50px;font-size:12px;opacity:.7}
 .cur.hide{opacity:0}
 @media (hover:none),(pointer:coarse){.cur{display:none}}
 @media (prefers-reduced-motion:reduce){.curtain{display:none}}
+.logo img{display:block;height:34px;width:auto}@media (max-width:600px){.logo img{height:28px}}

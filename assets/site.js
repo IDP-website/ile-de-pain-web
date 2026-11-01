@@ -17,7 +17,7 @@ window.IDP={PHONE,PHONE_TXT,EMAIL,MAPS,IG,FB,DAYS,OPEN,SERVICE,HM,ICON,reduce};
 /* chrome: nav, drawer, footer, bar */
 const links=[["/","Home","home"],["/#menu","Menu","menu"],["/gallery/","Gallery","gallery"],["/events/","Events","events"],["/#gifts","Gift Sets","gifts"],["/#visit","Visit","visit"]];
 const nav=document.createElement("header");nav.className="nav";nav.id="nav";
-nav.innerHTML=`<div class="wrap"><a class="logo" href="/">île de païn</a>
+nav.innerHTML=`<div class="wrap"><a class="logo" href="/" aria-label="île de païn home"><img src="/assets/img/logo-orange.png" alt="île de païn"></a>
 <ul>${links.map(([h,l,k])=>`<li><a href="${h}"${k===page?' aria-current="page"':""}>${l}</a></li>`).join("")}</ul>
 <a class="btn fill desk" href="tel:${PHONE}">${ICON.phone}Call us</a><button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span></button></div>`;
 document.body.prepend(nav);

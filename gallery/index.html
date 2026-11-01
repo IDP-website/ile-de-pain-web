@@ -45,13 +45,13 @@
 <script src="/assets/site.js"></script>
 <script>
 (function(){
-const cats=["All",...new Set(PHOTOS.map(p=>p.cat))];let cur="All";
+const cats=["All",...new Set(GALLERY.map(p=>p.cat))];let cur="All";
 const chips=document.getElementById("chips"),grid=document.getElementById("grid");
-chips.innerHTML=cats.map(c=>`<button class="chip" aria-pressed="${c==="All"}" data-c="${c}">${c}<span class="n">${c==="All"?PHOTOS.length:PHOTOS.filter(p=>p.cat===c).length}</span></button>`).join("");
-grid.innerHTML=PHOTOS.map((p,i)=>`<button class="tile rv" data-i="${i}" data-c="${p.cat}" aria-label="Open photo: ${p.alt}"><img src="${p.src.replace("w=1400","w=900")}" alt="${p.alt}" loading="lazy"><span class="lbl">${p.cat}</span></button>`).join("");
+chips.innerHTML=cats.map(c=>`<button class="chip" aria-pressed="${c==="All"}" data-c="${c}">${c}<span class="n">${c==="All"?GALLERY.length:GALLERY.filter(p=>p.cat===c).length}</span></button>`).join("");
+grid.innerHTML=GALLERY.map((p,i)=>`<button class="tile rv" data-i="${i}" data-c="${p.cat}" aria-label="Open photo: ${p.alt}"><img src="${p.src}" alt="${p.alt}" loading="lazy"><span class="lbl">${p.cat}</span></button>`).join("");
 IDP.observe(grid);
 chips.addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;cur=b.dataset.c;chips.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x===b));grid.querySelectorAll(".tile").forEach(t=>t.classList.toggle("hide",cur!=="All"&&t.dataset.c!==cur))});
-grid.addEventListener("click",e=>{const t=e.target.closest(".tile");if(!t)return;const vis=PHOTOS.filter(p=>cur==="All"||p.cat===cur);IDP.lightbox(vis,vis.indexOf(PHOTOS[+t.dataset.i]))});
+grid.addEventListener("click",e=>{const t=e.target.closest(".tile");if(!t)return;const vis=GALLERY.filter(p=>cur==="All"||p.cat===cur);IDP.lightbox(vis,vis.indexOf(GALLERY[+t.dataset.i]))});
 })();
 </script>
 </body>
