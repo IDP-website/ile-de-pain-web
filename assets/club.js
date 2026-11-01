@@ -61,13 +61,14 @@ const demo = {
 async function rpc(name, args){
   if(DEMO){
     await new Promise(r=>setTimeout(r,250));
-    if(name==="my_card"){ const w=Math.floor(Date.now()/30000); return {...demo.card, token:"IDPCLUB:demo."+w+".demo", expires_in:30-Math.floor(Date.now()/1000)%30}; }
+    if(name==="my_card"){ const w=Math.floor(Date.now()/30000); return {...demo.card, today:new Date().toISOString().slice(0,10), varieties:["Companio","Bagatta","Fougasse","Baguette","100% Vollkorn","100% Rye","100% Organic \"O\""], orders:[], token:"IDPCLUB:demo."+w+".demo", expires_in:30-Math.floor(Date.now()/1000)%30}; }
     if(name==="staff_lookup"){ return args.token.startsWith("IDPCLUB:") ? {ok:true,name:demo.card.name,tier:demo.card.tier,tier_name:demo.card.tier_name,paid_until:demo.card.paid_until,balances:demo.card.balances} : {ok:false,reason:"This code has expired or is not valid. Ask the member to open their card again."}; }
     if(name==="staff_redeem"){ const b=demo.card.balances[args.item]; if(!b||b.left<args.qty) return {ok:false,reason:"Nothing left for this item right now.",balances:demo.card.balances}; b.left-=args.qty;b.used+=args.qty; demo.card.history.unshift({item:args.item,qty:args.qty,created_at:new Date().toISOString()}); return {ok:true,balances:demo.card.balances}; }
     if(name==="admin_overview"){ return {members:demo.members,today:demo.today,mrr_cents:149900+49900,tiers:TIERS_FALLBACK}; }
     if(name==="admin_record_payment"){ const m=demo.members.find(x=>x.id===args.uid); const d=new Date(Math.max(Date.now(),m.paid_until?Date.parse(m.paid_until):0)); d.setMonth(d.getMonth()+args.months); Object.assign(m,{status:"active",active:true,paid_until:d.toISOString().slice(0,10)}); return null; }
     if(name==="admin_set_member"){ const m=demo.members.find(x=>x.id===args.uid); Object.assign(m,{tier_id:args.tier,status:args.status}); return null; }
     if(name==="admin_set_role"){ demo.members.find(x=>x.id===args.uid).role=args.new_role; return null; }
+    if(name==="place_order"||name==="cancel_order"||name==="staff_collect"){ return {ok:true, balances:demo.card.balances}; }
     if(name==="choose_tier"){ demo.card.tier=args.tier; return null; }
     return null;
   }

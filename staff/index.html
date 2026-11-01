@@ -83,9 +83,11 @@ function render(r){
   } else {
     const b = r.balances||{}, keys = Object.keys(ITEMS).filter(k => b[k] && b[k].allow > 0);
     box.innerHTML = `<div class="result ok"><div class="big">✓</div><h2>${esc(r.name||"Member")}</h2><p style="margin-top:4px;font-weight:700">${esc(r.tier_name)} · paid until ${fmtDate(r.paid_until)}</p>
+      ${(r.orders||[]).length?`<div style="background:#fff;border-radius:16px;padding:12px;margin-top:14px;border:2px solid var(--ok)"><b style="display:block;margin-bottom:6px">🥖 Pre-order to hand over</b>${r.orders.map(o=>`<div class="ri" style="padding:8px 0"><div class="tx"><b>${o.qty} × ${esc(o.variety)}</b><span>Ordered for ${fmtDate(o.collect_on)}</span></div><button data-o="${o.id}">Hand over</button></div>`).join("")}</div>`:""}
       <div class="ritems">${keys.length?keys.map(k=>`<div class="ri"><div style="font-size:26px">${ITEMS[k].icon}</div><div class="tx"><b>${esc(ITEMS[k].label)}</b><span>${b[k].left} of ${b[k].allow} left ${PER[b[k].per]}</span></div><button data-i="${k}" ${b[k].left<1?"disabled":""}>Give 1</button></div>`).join(""):'<p>No treats on this tier right now.</p>'}</div></div>
       <button class="btn block" style="border-color:#3A2F27;color:#fff" id="b-next">Done · scan next card</button>`;
-    box.querySelectorAll(".ri button").forEach(bt => bt.onclick = () => give(bt.dataset.i, bt));
+    box.querySelectorAll(".ri button[data-i]").forEach(bt => bt.onclick = () => give(bt.dataset.i, bt));
+    box.querySelectorAll(".ri button[data-o]").forEach(bt => bt.onclick = () => collect(+bt.dataset.o, bt));
   }
   $("b-next").onclick = next;
 }
@@ -102,6 +104,13 @@ async function give(item, bt){
     setTimeout(()=>f.classList.add("hide"), 1800); bt.disabled = false;
     if(/expired/i.test(r.reason||"")) setTimeout(next, 1900);
   }
+}
+async function collect(id, bt){
+  bt.disabled = true;
+  const r = await rpc("staff_collect", {token, order_id:id}).catch(err => ({ok:false, reason:err.message}));
+  const f = $("flash"); f.textContent = r.ok ? "🥖  Pre-order handed over" : (r.reason || "Couldn't hand that over"); f.style.background = r.ok ? "var(--ok)" : "var(--bad)"; f.classList.remove("hide");
+  setTimeout(()=>f.classList.add("hide"), r.ok ? 900 : 1800);
+  const again = await rpc("staff_lookup", {token}).catch(()=>null); if(again) render(again); else bt.disabled = false;
 }
 async function next(){ busy = false; token = null; $("res").classList.add("hide"); $("scanbox").classList.remove("hide"); await startCam(); }
 

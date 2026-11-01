@@ -34,6 +34,9 @@
       <select id="fs"><option value="">Everyone</option><option value="active">Active</option><option value="pending">Awaiting first payment</option><option value="overdue">Overdue</option><option value="staff">Staff &amp; admin</option></select>
     </div>
     <div class="tablewrap"><table><thead><tr><th>Member</th><th>Tier</th><th>Status</th><th>Paid until</th><th>Visits (30 days)</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+    <h2 style="font-size:30px;margin:34px 0 6px">Loaf orders to bake</h2>
+    <p class="muted small" style="margin-bottom:12px">Member pre-orders for the next 4 weeks. Orders close 2 days before each day.</p>
+    <div class="tablewrap"><table><thead><tr><th>Collect on</th><th>Bake</th><th>For</th></tr></thead><tbody id="orders"></tbody></table></div>
     <h2 style="font-size:30px;margin:34px 0 12px">Today at the counter</h2>
     <div class="tablewrap"><table><thead><tr><th>Time</th><th>Member</th><th>Given</th><th>By</th></tr></thead><tbody id="today"></tbody></table></div>
   </section>
@@ -83,7 +86,10 @@ function draw(){
     <td>${s.html}</td><td>${m.paid_until?fmtDate(m.paid_until):'<span class="muted">-</span>'}</td><td>${m.uses_30d||0}</td>
     <td><div class="acts">${m.tier_id?`<button data-a="pay" data-id="${m.id}">Record payment</button>`:""}<button data-a="edit" data-id="${m.id}">Change</button></div></td></tr>`; }).join("") || '<tr><td colspan="6" class="muted">No one matches.</td></tr>';
   $("rows").querySelectorAll("button").forEach(b => b.onclick = () => (b.dataset.a==="pay"?payDlg:editDlg)(ms.find(m=>m.id===b.dataset.id), T));
-  $("today").innerHTML = (data.today||[]).map(r=>`<tr><td>${new Date(r.created_at).toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}</td><td>${esc(r.full_name)}</td><td>${ITEMS[r.item]?.icon||""} ${r.qty>1?r.qty+" × ":""}${esc(ITEMS[r.item]?.label||r.item)}</td><td class="muted">${esc(r.staff||"")}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">Nothing given out yet today.</td></tr>';
+  const byDay = {}; (data.orders||[]).forEach(o => (byDay[o.collect_on] ||= []).push(o));
+  $("orders").innerHTML = Object.keys(byDay).sort().map(d => { const os = byDay[d], tot = {}; os.forEach(o => tot[o.variety] = (tot[o.variety]||0) + o.qty);
+    return `<tr><td><b>${new Date(d+"T12:00:00Z").toLocaleDateString("en-ZA",{weekday:"short",day:"numeric",month:"short"})}</b></td><td>${Object.entries(tot).map(([v,n])=>`<b>${n} ×</b> ${esc(v)}`).join("<br>")}</td><td class="small">${os.map(o=>`${esc(o.full_name||"Member")} · ${o.qty} × ${esc(o.variety)}`).join("<br>")}</td></tr>`; }).join("") || '<tr><td colspan="3" class="muted">No loaf orders yet.</td></tr>';
+  $("today").innerHTML = (data.today||[]).map(r=>`<tr><td>${new Date(r.created_at).toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}</td><td>${esc(r.full_name)}</td><td>${ITEMS[r.item]?.icon||""} ${r.qty>1?r.qty+" × ":""}${esc(ITEMS[r.item]?.label||r.item)}${r.order_id?" <span class=\"pill\">pre-order</span>":""}</td><td class="muted">${esc(r.staff||"")}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">Nothing given out yet today.</td></tr>';
 }
 function dialog(html, onok){
   const f = $("f-dlg"); f.innerHTML = html + `<div class="msg hide" id="m-dlg"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><button class="btn" value="cancel">Cancel</button><button class="btn fill" value="ok" id="dlg-ok">Save</button></div>`;

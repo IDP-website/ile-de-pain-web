@@ -77,6 +77,17 @@
       <div class="bal" id="bal"></div>
       <p class="small muted" style="margin-top:8px">Weekly treats reset every Tuesday when we open. Unused treats don't roll over.</p>
     </div>
+    <div class="panel hide" id="p-order">
+      <span class="eyebrow">Order your loaf</span>
+      <p class="small muted" style="margin-top:6px">Order at least 2 days ahead and collect it at the counter on the day. We're open Tuesday to Saturday.</p>
+      <form id="f-order" novalidate>
+        <label>Bread<select name="variety"></select></label>
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:10px"><label>How many<select name="qty"></select></label><label>Collect on<input name="date" type="date" required></label></div>
+        <p class="small muted" id="d-hint" style="margin-top:6px"></p>
+        <button class="btn fill block" id="b-order">Order</button><div class="msg hide" id="m-order"></div>
+      </form>
+      <ul class="hist" id="orders" style="margin-top:14px"></ul>
+    </div>
     <div class="install hide" id="install"><span style="font-size:26px">📲</span><div><b>Add the club to your home screen</b><span id="inst-txt">Your card opens instantly, even with weak signal.</span></div><button class="btn fill" id="b-inst" style="padding:10px 14px">Add</button></div>
     <div class="panel">
       <span class="eyebrow">Recent visits</span>
@@ -168,10 +179,41 @@ function renderCard(c){
   const keys = Object.keys(ITEMS).filter(k => b[k] && b[k].allow > 0);
   $("bal").innerHTML = keys.length ? keys.map(k => { const x=b[k]; return `<div class="b"><div class="ic">${ITEMS[k].icon}</div><div class="tx"><b>${x.left} ${ITEMS[k].label.toLowerCase()}${x.left===1?"":"s"} left</b><span>${x.allow} ${PER[x.per]} · ${ITEMS[k].note}</span></div><div class="dots">${Array.from({length:x.allow},(_,i)=>`<i class="${i<x.used?"u":""}"></i>`).join("")}</div></div>`; }).join("")
     : '<p class="muted small" style="padding:10px 0">Your treats will show here once your membership is active.</p>';
+  renderOrders(c);
   const h = c.history || [];
   $("hist").innerHTML = h.length ? h.map(r => `<li><span>${ITEMS[r.item]?.icon||""} ${r.qty>1?r.qty+" × ":""}${esc(ITEMS[r.item]?.label||r.item)}</span><span class="muted">${fmtTime(r.created_at)}</span></li>`).join("") : '<li class="muted">No visits yet. See you on the island!</li>';
   const f = $("f-prof"); if(!f.dataset.filled){ f.name.value = c.name||""; f.phone.value = c.phone||""; f.birthday.value = c.birthday||""; f.birthday.disabled = !!c.birthday; f.dataset.filled = 1; }
 }
+
+// ── loaf pre-orders ──
+const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const addD=(iso,n)=>{const d=new Date(iso+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)};
+const dayName=iso=>{const d=new Date(iso+"T12:00:00Z");return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]}`};
+const openDay=iso=>{const w=new Date(iso+"T12:00:00Z").getUTCDay();return w>=2&&w<=6};
+function firstOpen(iso){let d=iso;for(let i=0;i<7&&!openDay(d);i++)d=addD(d,1);return d}
+function renderOrders(c){
+  const b=(c.balances||{}).loaf, can=c.active && b && b.allow>0, f=$("f-order");
+  $("p-order").classList.toggle("hide", !can); if(!can) return;
+  const today=c.today||new Date().toISOString().slice(0,10), min=firstOpen(addD(today,2));
+  let max=addD(today,28); if(c.paid_until && c.paid_until<max) max=c.paid_until;
+  if(!f.dataset.ready){
+    f.variety.innerHTML=(c.varieties||[]).map(v=>`<option>${esc(v)}</option>`).join("");
+    f.qty.innerHTML=Array.from({length:b.allow},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join("");
+    f.date.value=min; f.dataset.ready=1;
+  }
+  f.date.min=addD(today,2); f.date.max=max;
+  if(f.date.value<f.date.min) f.date.value=min;
+  hint();
+  const os=c.orders||[];
+  $("orders").innerHTML=os.length?os.map(o=>{const cancel=o.status==="placed"&&o.collect_on>=addD(today,2);
+    return `<li><span>🥖 ${o.qty} × ${esc(o.variety)}<span class="muted small" style="display:block">${dayName(o.collect_on)} · ${o.status==="collected"?"Collected":o.collect_on===today?"Ready today":"Ordered"}</span></span>${cancel?`<button class="link" data-c="${o.id}">Cancel</button>`:""}</li>`}).join(""):'<li class="muted">No orders yet.</li>';
+  $("orders").querySelectorAll("[data-c]").forEach(bt=>bt.onclick=async()=>{bt.disabled=true;const r=await rpc("cancel_order",{order_id:+bt.dataset.c}).catch(e=>({ok:false,reason:e.message}));if(!r.ok)msg("m-order",r.reason);refresh()});
+}
+function hint(){const f=$("f-order"),v=f.date.value;$("d-hint").textContent=!v?"":openDay(v)?`Collect on ${dayName(v)}, any time we're open.`:"We're closed on Sundays and Mondays. Please pick Tuesday to Saturday.";$("b-order").disabled=!v||!openDay(v)}
+$("f-order").date.addEventListener("input",hint);
+$("f-order").onsubmit=async e=>{e.preventDefault();const f=e.target;msg("m-order","");$("b-order").disabled=true;
+  const r=await rpc("place_order",{variety:f.variety.value,qty:+f.qty.value,collect_on:f.date.value}).catch(err=>({ok:false,reason:err.message}));
+  if(r&&r.ok){msg("m-order",`Ordered! ${f.qty.value} × ${f.variety.value}, ready on ${dayName(f.date.value)}.`,true);refresh()}else{msg("m-order",(r&&r.reason)||"Couldn't place that order.");$("b-order").disabled=false}};
 // refresh the code exactly when it expires
 async function refresh(){
   clearTimeout(tick);
