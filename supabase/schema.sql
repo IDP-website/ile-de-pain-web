@@ -57,6 +57,7 @@ create table if not exists public.redemptions (
 create index if not exists redemptions_user_time on public.redemptions(user_id, created_at desc);
 
 create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
 create table if not exists private.settings (key text primary key, value text not null);
 insert into private.settings(key,value)
   values ('qr_secret', encode(extensions.gen_random_bytes(32),'hex'))
@@ -86,13 +87,13 @@ alter table public.redemptions enable row level security;
 drop policy if exists tiers_read on public.tiers;
 create policy tiers_read on public.tiers for select using (true);
 drop policy if exists own_profile on public.profiles;
-create policy own_profile on public.profiles for select using (auth.uid() = id);
+create policy own_profile on public.profiles for select using ((select auth.uid()) = id);
 drop policy if exists own_sub on public.subscriptions;
-create policy own_sub on public.subscriptions for select using (auth.uid() = user_id);
+create policy own_sub on public.subscriptions for select using ((select auth.uid()) = user_id);
 drop policy if exists own_redemptions on public.redemptions;
-create policy own_redemptions on public.redemptions for select using (auth.uid() = user_id);
+create policy own_redemptions on public.redemptions for select using ((select auth.uid()) = user_id);
 drop policy if exists own_payments on public.payments;
-create policy own_payments on public.payments for select using (auth.uid() = user_id);
+create policy own_payments on public.payments for select using ((select auth.uid()) = user_id);
 
 -- new sign-ups get a profile
 create or replace function public.handle_new_user() returns trigger
@@ -108,12 +109,12 @@ create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- ───────────────────────── helpers ─────────────────────────
-create or replace function public.sa_today() returns date language sql stable as
+create or replace function public.sa_today() returns date language sql stable set search_path = public as
 $$ select (now() at time zone 'Africa/Johannesburg')::date $$;
 
 -- weeks run Tuesday to Monday (they open on Tuesdays)
 create or replace function public.period_start(per text, bday date) returns timestamptz
-language plpgsql stable as $$
+language plpgsql stable set search_path = public as $$
 declare d date := public.sa_today();
 begin
   if per = 'day' then return (d::timestamp at time zone 'Africa/Johannesburg');
@@ -219,7 +220,7 @@ create or replace function public.staff_lookup(token text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare uid uuid; p record; s record; t record;
 begin
-  if public.role_of(auth.uid()) not in ('staff','admin') then raise exception 'staff only'; end if;
+  if coalesce(public.role_of(auth.uid()),'') not in ('staff','admin') then raise exception 'staff only'; end if;
   uid := public.qr_check(token);
   if uid is null then return jsonb_build_object('ok', false, 'reason', 'This code has expired or is not valid. Ask the member to open their card again.'); end if;
   select * into p from public.profiles where id = uid;
@@ -237,7 +238,7 @@ create or replace function public.staff_redeem(token text, item text, qty int de
 language plpgsql security definer set search_path = public as $$
 declare uid uuid; b jsonb;
 begin
-  if public.role_of(auth.uid()) not in ('staff','admin') then raise exception 'staff only'; end if;
+  if coalesce(public.role_of(auth.uid()),'') not in ('staff','admin') then raise exception 'staff only'; end if;
   uid := public.qr_check(token);
   if uid is null then return jsonb_build_object('ok', false, 'reason', 'This code has expired. Ask the member to open their card again.'); end if;
   if not public.is_active(uid) then return jsonb_build_object('ok', false, 'reason', 'Membership is not active.'); end if;
@@ -254,7 +255,7 @@ end $$;
 create or replace function public.admin_overview() returns jsonb
 language plpgsql security definer set search_path = public as $$
 begin
-  if public.role_of(auth.uid()) <> 'admin' then raise exception 'admin only'; end if;
+  if coalesce(public.role_of(auth.uid()),'') <> 'admin' then raise exception 'admin only'; end if;
   return jsonb_build_object(
     'members', coalesce((select jsonb_agg(m order by m.created_at desc) from (
         select p.id, p.full_name, u.email, p.phone, p.role, p.created_at, s.tier_id, s.status, s.paid_until,
@@ -274,7 +275,7 @@ create or replace function public.admin_record_payment(uid uuid, months int defa
 language plpgsql security definer set search_path = public as $$
 declare s record; t record;
 begin
-  if public.role_of(auth.uid()) <> 'admin' then raise exception 'admin only'; end if;
+  if coalesce(public.role_of(auth.uid()),'') <> 'admin' then raise exception 'admin only'; end if;
   select * into s from public.subscriptions where user_id = uid;
   if s is null then raise exception 'member has not chosen a tier'; end if;
   select * into t from public.tiers where id = s.tier_id;
@@ -288,7 +289,7 @@ end $$;
 create or replace function public.admin_set_member(uid uuid, tier text, status text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if public.role_of(auth.uid()) <> 'admin' then raise exception 'admin only'; end if;
+  if coalesce(public.role_of(auth.uid()),'') <> 'admin' then raise exception 'admin only'; end if;
   insert into public.subscriptions(user_id, tier_id, status) values (uid, tier, status)
   on conflict (user_id) do update set tier_id = excluded.tier_id, status = excluded.status, updated_at = now();
 end $$;
@@ -296,7 +297,9 @@ end $$;
 create or replace function public.admin_set_role(uid uuid, new_role text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  if public.role_of(auth.uid()) <> 'admin' then raise exception 'admin only'; end if;
+  if coalesce(public.role_of(auth.uid()),'') <> 'admin' then raise exception 'admin only'; end if;
+  if new_role not in ('member','staff','admin') then raise exception 'unknown role'; end if;
+  if uid = auth.uid() and new_role <> 'admin' then raise exception 'you cannot remove your own admin access'; end if;
   update public.profiles set role = new_role where id = uid;
 end $$;
 
@@ -307,7 +310,7 @@ revoke all on function public.my_card(), public.choose_tier(text), public.update
 grant execute on function public.my_card(), public.choose_tier(text), public.update_my_profile(text,text,date),
   public.staff_lookup(text), public.staff_redeem(text,text,int), public.admin_overview(),
   public.admin_record_payment(uuid,int,text), public.admin_set_member(uuid,text,text), public.admin_set_role(uuid,text) to authenticated;
-revoke all on function public.balances(uuid), public.is_active(uuid), public.qr_sign(uuid,bigint), public.qr_check(text), public.role_of(uuid) from public, anon, authenticated;
+revoke all on function public.handle_new_user(), public.sa_today(), public.period_start(text,date), public.balances(uuid), public.is_active(uuid), public.qr_sign(uuid,bigint), public.qr_check(text), public.role_of(uuid) from public, anon, authenticated;
 
 -- After the first person signs up, make them admin by running (with their email):
 -- update public.profiles set role = 'admin' where id = (select id from auth.users where email = 'owner@example.com');
