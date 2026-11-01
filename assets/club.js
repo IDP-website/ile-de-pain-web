@@ -21,7 +21,7 @@ const TIERS_FALLBACK = [
    perks:[{item:"loaf",qty:2,per:"week"},{item:"cappuccino",qty:5,per:"week"},{item:"cappuccino",qty:1,per:"day"},{item:"pastry",qty:1,per:"week"},{item:"bouquet",qty:1,per:"month"},{item:"birthday",qty:1,per:"birthday"}],
    extras:["Birthday pastry on us","First access to Gift Sets"]}
 ];
-const rand = c => "R" + (c/100).toLocaleString("en-ZA",{maximumFractionDigits:0});
+const rand = c => "R" + Math.round(c/100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmtDate = d => d ? new Date(d).toLocaleDateString("en-ZA",{day:"numeric",month:"short",year:"numeric"}) : "";
 const fmtTime = d => new Date(d).toLocaleString("en-ZA",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
