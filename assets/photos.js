@@ -12,7 +12,6 @@ window.PHOTOS=[
  {id:"benedict",   src:P(16556114), alt:"Eggs on toasted bread with greens", cat:"Breakfast"},
  {id:"nata",       src:P(19282132), alt:"A tray of pastéis de nata", cat:"Bakery"},
  {id:"pastries",   src:U("1789152952858-2b2270419149"), alt:"Pastries going into the stone oven", cat:"Behind the scenes"},
- {id:"pizza",      src:P(18126737), alt:"Pizza from the wood-fired oven", cat:"Lunch"},
  {id:"terrace",    src:P(6304899),  alt:"Tables on the terrace", cat:"The space"},
  {id:"choc",       src:P(28402363), alt:"A slice of rich chocolate cake", cat:"Bakery"},
  {id:"barista",    src:P(32590864), alt:"Milk being poured for a flat white", cat:"Coffee & drinks"},

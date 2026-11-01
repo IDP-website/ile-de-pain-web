@@ -4,16 +4,18 @@ const PHONE="+27443025705", PHONE_TXT="044 302 5705", EMAIL="admin@iledepain.co.
 const MAPS="https://www.google.com/maps/dir/?api=1&destination=-34.0477133,23.047419";
 const IG="https://www.instagram.com/iledepain/", FB="https://www.facebook.com/iledepain/";
 const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-const OPEN={2:[8,15],3:[8,15],4:[8,15],5:[8,15],6:[8,15]};
+const OPEN={2:[8,15.5],3:[8,15.5],4:[8,15.5],5:[8,15.5],6:[8,15.5]};
+const SERVICE=[[8,11.5,"Breakfast"],[11.5,12,"Coffee & Treats"],[12,15,"Lunch"],[15,15.5,"Afternoon Tea & Pastries"]];
+const HM=h=>String(Math.floor(h)).padStart(2,"0")+":"+String(Math.round(h%1*60)).padStart(2,"0");
 const page=document.body.dataset.page||"home";
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ICON={
  phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>',
  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>'};
-window.IDP={PHONE,PHONE_TXT,EMAIL,MAPS,IG,FB,DAYS,OPEN,ICON,reduce};
+window.IDP={PHONE,PHONE_TXT,EMAIL,MAPS,IG,FB,DAYS,OPEN,SERVICE,HM,ICON,reduce};
 
 /* chrome: nav, drawer, footer, bar */
-const links=[["/","Home","home"],["/#menu","Menu","menu"],["/gallery/","Gallery","gallery"],["/events/","Events","events"],["/#visit","Visit","visit"]];
+const links=[["/","Home","home"],["/#menu","Menu","menu"],["/gallery/","Gallery","gallery"],["/events/","Events","events"],["/#gifts","Gift Sets","gifts"],["/#visit","Visit","visit"]];
 const nav=document.createElement("header");nav.className="nav";nav.id="nav";
 nav.innerHTML=`<div class="wrap"><a class="logo" href="/">île de païn</a>
 <ul>${links.map(([h,l,k])=>`<li><a href="${h}"${k===page?' aria-current="page"':""}>${l}</a></li>`).join("")}</ul>
@@ -22,7 +24,7 @@ document.body.prepend(nav);
 const dr=document.createElement("div");dr.className="drawer";dr.setAttribute("aria-hidden","true");
 dr.innerHTML=`<div class="top"><b>île de païn</b><button class="x" aria-label="Close menu">×</button></div>
 <nav>${links.map(([h,l],i)=>`<a href="${h}"><span>0${i+1}</span>${l}</a>`).join("")}</nav>
-<div class="foot"><a href="tel:${PHONE}">${PHONE_TXT}</a><a href="${IG}" target="_blank" rel="noopener">Instagram</a><span>Tue to Sat · 8am to 3pm</span></div>`;
+<div class="foot"><a href="tel:${PHONE}">${PHONE_TXT}</a><a href="${IG}" target="_blank" rel="noopener">Instagram</a><span>Tue to Sat · 08:00 to 15:30 · No bookings</span></div>`;
 document.body.append(dr);
 const mb=nav.querySelector(".menu-btn");
 const setDr=o=>{dr.classList.toggle("open",o);dr.setAttribute("aria-hidden",!o);mb.setAttribute("aria-expanded",o);document.body.style.overflow=o?"hidden":""};
@@ -33,11 +35,11 @@ const ft=document.createElement("footer");
 ft.innerHTML=`<div class="wrap"><div class="big">île de païn</div>
 <div class="cols">
  <div><b>Find us</b>10 The Boatshed, Long Street<br>Thesen Island, Knysna<br><a href="${MAPS}" target="_blank" rel="noopener">Get directions →</a></div>
- <div><b>Open</b>Tuesday to Saturday<br>8am to 3pm<br>Closed Sunday & Monday</div>
+ <div><b>Open</b>Tuesday to Saturday<br>08:00 to 15:30<br>Closed Sunday & Monday<br>No bookings, first come first served</div>
  <div><b>Say hello</b><a href="tel:${PHONE}">${PHONE_TXT}</a><br><a href="mailto:${EMAIL}">${EMAIL}</a></div>
  <div><b>Follow</b><a href="${IG}" target="_blank" rel="noopener">Instagram</a><br><a href="${FB}" target="_blank" rel="noopener">Facebook</a></div>
 </div>
-<p class="credit">Authentic artisans · circa 2002 &nbsp;·&nbsp; Website preview designed by Jay Steenkamp · jaysteenkamp.com</p></div>`;
+<p class="credit">Authentic artisans · circa 2002 &nbsp;·&nbsp; Website by Jay Steenkamp · jaysteenkamp.com</p></div>`;
 document.body.append(ft);
 const bar=document.createElement("nav");bar.className="bar";bar.setAttribute("aria-label","Quick actions");
 bar.innerHTML=`<a href="tel:${PHONE}">${ICON.phone}Call</a><a class="fill" href="${MAPS}" target="_blank" rel="noopener">${ICON.pin}Directions</a>`;
@@ -50,10 +52,12 @@ function nextOpen(day){for(let i=1;i<=7;i++){const d=(day+i)%7;if(OPEN[d])return
 function status(){
   const {day,h}=sast(),o=OPEN[day];
   document.querySelectorAll("[data-status]").forEach(el=>{const tx=el.querySelector("span")||el;
-    if(o&&h>=o[0]&&h<o[1]){el.classList.remove("closed");tx.textContent=`Open now · until ${o[1]-12}pm`}
-    else if(o&&h<o[0]){el.classList.add("closed");tx.textContent=`Opens today at ${o[0]}am`}
-    else{el.classList.add("closed");tx.textContent=`Closed now · opens ${nextOpen(day)} at 8am`}});
-  document.querySelectorAll("[data-hours]").forEach(el=>el.innerHTML=[1,2,3,4,5,6,0].map(d=>`<div class="${d===day?"today":""} ${OPEN[d]?"":"closed"}"><span>${DAYS[d]}${d===day?" · today":""}</span><span>${OPEN[d]?"8am to 3pm":"Closed"}</span></div>`).join(""));
+    if(o&&h>=o[0]&&h<o[1]){const sv=SERVICE.find(x=>h>=x[0]&&h<x[1]);el.classList.remove("closed");tx.textContent=`Open now · ${sv[2]} until ${HM(sv[1])}`}
+    else if(o&&h<o[0]){el.classList.add("closed");tx.textContent=`Opens today at ${HM(o[0])}`}
+    else{el.classList.add("closed");tx.textContent=`Closed now · opens ${nextOpen(day)} at 08:00`}});
+  const {day:dd,h:hh}=sast(),oo=OPEN[dd];
+  document.querySelectorAll("[data-service]").forEach(el=>el.innerHTML=SERVICE.map(x=>`<div class="${oo&&hh>=x[0]&&hh<x[1]?"now":""}"><span>${HM(x[0])} to ${HM(x[1])}</span><b>${x[2]}</b></div>`).join(""));
+  document.querySelectorAll("[data-hours]").forEach(el=>el.innerHTML=[1,2,3,4,5,6,0].map(d=>`<div class="${d===day?"today":""} ${OPEN[d]?"":"closed"}"><span>${DAYS[d]}${d===day?" · today":""}</span><span>${OPEN[d]?"08:00 to 15:30":"Closed"}</span></div>`).join(""));
 }
 status();setInterval(status,60000);
 

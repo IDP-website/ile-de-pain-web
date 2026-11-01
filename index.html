@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>île de païn · Artisan bakery & café, Thesen Island, Knysna</title>
-<meta name="description" content="Wood-fired sourdough, pastries, breakfast and lunch on Thesen Island, Knysna, since 2002. Open Tuesday to Saturday, 8am to 3pm.">
+<meta name="description" content="Wood-fired sourdough, pastries, breakfast and lunch on Thesen Island, Knysna, since 2002. Open Tuesday to Saturday, 08:00 to 15:30. No bookings, first come first served.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23F26B1D'/%3E%3Ctext x='32' y='42' font-family='Georgia' font-style='italic' font-size='26' text-anchor='middle' fill='%23fff'%3Eidp%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,20 +80,42 @@
 .tabs::-webkit-scrollbar{display:none}
 .tab{flex:none;border:1.5px solid var(--line);background:transparent;border-radius:999px;padding:11px 20px;font-weight:600;font-size:15px;cursor:pointer;transition:all .2s}
 .tab[aria-selected="true"]{background:var(--ember);color:#fff;border-color:var(--ember)}
-.panel{display:none;margin-top:30px}
+.panel{display:none;margin-top:34px}
 .panel.on{display:block;animation:fade .5s}
-.item{display:grid;grid-template-columns:70px 1fr auto;gap:10px 22px;align-items:baseline;padding:26px 0;border-bottom:1px solid var(--line);position:relative;transition:padding .35s cubic-bezier(.2,.8,.2,1)}
-.item:hover{padding-left:14px}
-.item .no{font-size:13px;font-weight:700;color:var(--ink-2);letter-spacing:.1em}
-.item h3{font-size:clamp(30px,3.6vw,52px);line-height:1;letter-spacing:-.02em;transition:color .25s}
-.item:hover h3{color:var(--ember)}
-.item p{grid-column:2/-1;color:var(--ink-2);font-size:16px;margin-top:-4px}
-.tag{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ember);border:1px solid currentColor;border-radius:999px;padding:5px 11px;white-space:nowrap}
-@media (max-width:700px){.item{grid-template-columns:1fr auto}.item .no{display:none}.item p{grid-column:1/-1}}
-.peek{position:fixed;left:0;top:0;width:260px;height:320px;border-radius:999px 999px 24px 24px;overflow:hidden;pointer-events:none;z-index:40;opacity:0;transform:translate(-50%,-50%) scale(.7) rotate(-6deg);transition:opacity .25s,transform .35s cubic-bezier(.2,.8,.2,1);box-shadow:0 40px 80px -30px rgba(43,30,22,.6)}
-.peek.on{opacity:1;transform:translate(-50%,-50%) scale(1) rotate(-4deg)}
-.peek img{width:100%;height:100%;object-fit:cover}
-@media (hover:none){.peek{display:none}}
+.ptop{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:14px}
+.ptop h3{font-size:clamp(36px,4.4vw,60px);font-style:italic;font-weight:300;color:var(--ember)}
+.ptime{font-weight:700;letter-spacing:.14em;font-size:13px;text-transform:uppercase}
+.pnote{color:var(--ink-2);max-width:70ch;margin-top:16px;font-size:16px}
+.groups{columns:2;column-gap:clamp(30px,5vw,70px);margin-top:10px}
+@media (max-width:820px){.groups{columns:1}}
+.grp{break-inside:avoid;padding-top:30px}
+.grp h4{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--crust,#9B4021);padding-bottom:6px}
+.mi{padding:13px 0;border-bottom:1px solid var(--line);break-inside:avoid}
+.mn{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+.mn b{font-family:var(--f-d);font-weight:400;font-size:clamp(19px,1.6vw,22px);line-height:1.15}
+.pr{font-weight:700;font-size:14px;text-align:right;max-width:46%;color:var(--ink)}
+.mi p{color:var(--ink-2);font-size:14.5px;margin-top:4px;line-height:1.45}
+.pb{font-size:.7em}
+@media (max-width:600px){.mn{flex-direction:column;gap:3px}.pr{text-align:left;max-width:none;color:var(--ember)}}
+.wine .mn b{font-size:clamp(17px,1.4vw,19px)}
+.pfoot{margin-top:26px;font-family:var(--f-d);font-style:italic;font-size:18px;color:var(--ink-2)}
+.gifts{padding:clamp(90px,12vw,150px) 0;background:var(--cream)}
+.gifts .head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+.gifts h2{font-size:clamp(54px,7.5vw,112px)}
+.gset{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px}
+@media (max-width:900px){.gset{grid-template-columns:1fr}}
+.gcard{background:#fff;border-radius:28px;padding:14px 14px 26px}
+.gph{position:relative;aspect-ratio:4/3;border-radius:20px;overflow:hidden;background:var(--oat)}
+.gph img{width:100%;height:100%;object-fit:cover}
+.gph span{position:absolute;left:12px;top:12px;background:var(--ember);color:#fff;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;padding:7px 12px;border-radius:999px}
+.gcard h3{font-size:clamp(26px,2.4vw,32px);margin:20px 10px 0}
+.gcard p{color:var(--ink-2);margin:8px 10px 0;font-size:15px}
+.nobook{margin-top:26px;background:var(--ember);color:#fff;border-radius:18px;padding:14px 18px;font-size:16px}
+.service{margin-top:26px}
+.service [data-service] div{display:flex;justify-content:space-between;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line);font-size:15px}
+.service [data-service] div b{font-weight:600}
+.service [data-service] div.now{color:var(--ember);font-weight:700}
+.service .eyebrow{display:block;margin-bottom:6px}
 .menu .note{margin-top:28px;color:var(--ink-2);font-size:14px}
 .fire{background:linear-gradient(160deg,#C65A2B,#9B4021);color:#FFF6EC;padding:clamp(90px,12vw,160px) 0;overflow:hidden;position:relative}
 .fire .grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,6vw,90px);align-items:center}
@@ -160,7 +182,7 @@
   <div class="sun" aria-hidden="true"></div>
   <div class="wrap">
     <div>
-      <div class="meta"><span class="status" data-status><i></i><span>Open Tuesday to Saturday, 8am to 3pm</span></span><span class="sk" data-skylabel></span></div>
+      <div class="meta"><span class="status" data-status><i></i><span>Open Tuesday to Saturday, 08:00 to 15:30</span></span><span class="sk" data-skylabel></span></div>
       <h1 class="split">île de<br>païn</h1>
       <p class="since rv">Authentic artisans · circa 2002</p>
       <p class="lede rv">Wood-fired sourdough, proper breakfast and a long lunch on the island.</p>
@@ -188,7 +210,7 @@
   <div class="facts">
     <div class="fact rv"><b>4.6<em>★</em></b><small>from 2,500+ Google reviews</small></div>
     <div class="fact rv"><b>20<em>+</em></b><small>years of sourdough culture</small></div>
-    <div class="fact rv"><b>8<em>–</em>3</b><small>Tuesday to Saturday</small></div>
+    <div class="fact rv"><b>8<em>–</em>3:30</b><small>Tuesday to Saturday · no bookings</small></div>
     <div class="fact rv"><b>🐶<em>+</em>👶</b><small>dogs and kids welcome</small></div>
   </div>
 </div></section>
@@ -198,52 +220,30 @@
     <div class="head"><div class="wrap"><div><span class="eyebrow">A day on the island</span><h2 style="margin-top:12px">From fire to <span class="it">last loaf.</span></h2></div><div class="clock" id="clock">before dawn</div></div></div>
     <div class="track" id="track">
       <article class="slide" data-clock="before dawn"><div class="ph"><img data-photo="oven" alt="The wood-fired oven glowing" loading="lazy"></div><div class="tx" style="--tone:#FFF4EA"><span class="n">01 / 05</span><div><div class="time">Before dawn</div><h3>The fire goes on.</h3><p>Long before the doors open, the bakers are at the wood-fired oven and the sourdough is going in.</p></div></div></article>
-      <article class="slide" data-clock="8:00"><div class="ph"><img data-photo="croissants" alt="Croissants fresh from the oven" loading="lazy"></div><div class="tx" style="--tone:#FFF9EF"><span class="n">02 / 05</span><div><div class="time">8:00</div><h3>Doors open.</h3><p>First coffees, warm croissants and shelves full of bread. Early birds get the best pick.</p></div></div></article>
-      <article class="slide" data-clock="10:30"><div class="ph"><img data-photo="frenchtoast" alt="Brioche French toast" loading="lazy"></div><div class="tx" style="--tone:#F4F8FB"><span class="n">03 / 05</span><div><div class="time">10:30</div><h3>Breakfast is on.</h3><p>Brioche French toast, shakshuka meatballs, croissant and soft scrambled eggs. Grab a table on the terrace.</p></div></div></article>
-      <article class="slide" data-clock="12:30"><div class="ph"><img data-photo="pizza" alt="Pizza from the wood-fired oven" loading="lazy"></div><div class="tx" style="--tone:#FFF6E8"><span class="n">04 / 05</span><div><div class="time">12:30</div><h3>Long lunch.</h3><p>Tartines on our own bread, bright salads, pizza from the fire and a glass of something local.</p></div></div></article>
-      <article class="slide" data-clock="3:00"><div class="ph"><img data-photo="display" alt="The bread shelves" loading="lazy"></div><div class="tx" style="--tone:#FBE9DA"><span class="n">05 / 05</span><div><div class="time">3:00</div><h3>Last loaves.</h3><p>Don't leave empty-handed. We'll wrap any bread for you to take home.</p></div></div></article>
+      <article class="slide" data-clock="08:00"><div class="ph"><img data-photo="frenchtoast" alt="Breakfast at île de païn" loading="lazy"></div><div class="tx" style="--tone:#FFF9EF"><span class="n">02 / 05</span><div><div class="time">08:00</div><h3>Breakfast.</h3><p>Doors open, first coffees and warm croissants. Turkish eggs, shakshuka meatballs and the Boatshed breakfast until 11:30.</p></div></div></article>
+      <article class="slide" data-clock="11:30"><div class="ph"><img data-photo="nata" alt="Pastéis de nata" loading="lazy"></div><div class="tx" style="--tone:#F4F8FB"><span class="n">03 / 05</span><div><div class="time">11:30</div><h3>Coffee &amp; treats.</h3><p>The half hour in between. Coffee, tea and something from the patisserie while the kitchen turns to lunch.</p></div></div></article>
+      <article class="slide" data-clock="12:00"><div class="ph"><img data-photo="salad" alt="A fresh lunch bowl" loading="lazy"></div><div class="tx" style="--tone:#FFF6E8"><span class="n">04 / 05</span><div><div class="time">12:00</div><h3>Long lunch.</h3><p>Popeye salad, confit duck, sourdough flatbreads and a glass of something local. Lunch runs until 15:00.</p></div></div></article>
+      <article class="slide" data-clock="15:00"><div class="ph"><img data-photo="display" alt="The bread shelves" loading="lazy"></div><div class="tx" style="--tone:#FBE9DA"><span class="n">05 / 05</span><div><div class="time">15:00</div><h3>Tea &amp; last loaves.</h3><p>Afternoon tea and pastries until 15:30. Don't leave empty-handed: we'll wrap any bread for you to take home.</p></div></div></article>
     </div>
     <div class="progress"><i id="prog"></i></div>
   </div>
 </section>
 
 <section class="menu" id="menu"><div class="wrap">
-  <div class="head"><div><span class="eyebrow">What we're known for</span><h2 class="split" style="margin-top:14px">The <span class="it">menu</span></h2></div><p class="rv" style="color:var(--ink-2);max-width:34ch">A taste of what's on the boards. The menu follows the seasons.</p></div>
-  <div class="tabs rv" role="tablist" aria-label="Menu sections">
-    <button class="tab" role="tab" aria-selected="true" data-p="breakfast">Breakfast</button>
-    <button class="tab" role="tab" aria-selected="false" data-p="lunch">Lunch</button>
-    <button class="tab" role="tab" aria-selected="false" data-p="bakery">Bakery</button>
-    <button class="tab" role="tab" aria-selected="false" data-p="drinks">Drinks</button>
+  <div class="head"><div><span class="eyebrow">The current menu</span><h2 class="split" style="margin-top:14px">The <span class="it">menu</span></h2></div><p class="rv" style="color:var(--ink-2);max-width:34ch">Everything we serve, all day long. Prices in Rand. <span class="pbk">🌿</span> marks plant-based dishes.</p></div>
+  <div class="tabs rv" role="tablist" aria-label="Menu sections" id="mtabs"></div>
+  <div id="mpanels"></div>
+  <p class="note">Please tell us about any allergies or dietary needs. Menu and prices may change with the seasons.</p>
+</div></section>
+
+<section class="gifts" id="gifts"><div class="wrap">
+  <div class="head"><div><span class="eyebrow">Coming soon</span><h2 class="split" style="margin-top:14px">Gift <span class="it">sets.</span></h2></div><p class="rv" style="color:var(--ink-2);max-width:36ch">Our bakes, beautifully boxed, to order online and give to someone who deserves it. The first sets are on their way.</p></div>
+  <div class="gset">
+    <article class="gcard rv"><div class="gph"><img data-photo="pastryshelf" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Confectioner's Box</h3><p>House-made caramels, nuts and chocolates from our retail counter.</p></article>
+    <article class="gcard rv"><div class="gph"><img data-photo="loaves" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Baker's Basket</h3><p>Our signature loaves and stix, ready for the table.</p></article>
+    <article class="gcard rv"><div class="gph"><img data-photo="natas2" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Patisserie Box</h3><p>A selection of our favourite pastries, boxed to give.</p></article>
   </div>
-  <div class="panel on" id="breakfast" role="tabpanel">
-    <div class="item" data-peek="frenchtoast"><span class="no">01</span><h3>Brioche French toast</h3><span class="tag">Favourite</span><p>Mascarpone cream, berry compote and crispy bacon.</p></div>
-    <div class="item" data-peek="toast2"><span class="no">02</span><h3>Shakshuka meatballs</h3><span class="tag">Guests rave</span><p>Rich, spiced and made for mopping up with fresh bread.</p></div>
-    <div class="item" data-peek="croissants"><span class="no">03</span><h3>Croissant &amp; soft eggs</h3><p>A buttery croissant from our ovens with soft, creamy scrambled eggs.</p></div>
-    <div class="item" data-peek="benedict"><span class="no">04</span><h3>Breakfast fishcakes</h3><span class="tag">Special</span><p>A breakfast special when it's on. Ask your waiter.</p></div>
-    <div class="item" data-peek="benedict"><span class="no">05</span><h3>Wagyu breakfast</h3><p>One of our most talked-about plates.</p></div>
-  </div>
-  <div class="panel" id="lunch" role="tabpanel">
-    <div class="item" data-peek="sourdough"><span class="no">01</span><h3>Smoked mackerel tartine</h3><p>On our own bread, with bright, fresh flavours.</p></div>
-    <div class="item" data-peek="pizza"><span class="no">02</span><h3>Wood-fired pizza</h3><span class="tag">From the fire</span><p>Blistered, thin and straight out of the oven.</p></div>
-    <div class="item" data-peek="loaves"><span class="no">03</span><h3>iDP toasted ham &amp; cheese</h3><span class="tag">Classic</span><p>Perfectly crisp and melty.</p></div>
-    <div class="item" data-peek="salad"><span class="no">04</span><h3>Poppy salad</h3><p>Fresh and bright. Add fried halloumi, trust us.</p></div>
-    <div class="item" data-peek="breads"><span class="no">05</span><h3>Bread tasting basket</h3><span class="tag">To share</span><p>A generous taste of what's come out of the fire today.</p></div>
-  </div>
-  <div class="panel" id="bakery" role="tabpanel">
-    <div class="item" data-peek="sourdough"><span class="no">01</span><h3>Wood-fired sourdough</h3><p>Our daily loaves. Every shape and grain is on the shelves.</p></div>
-    <div class="item" data-peek="croissants"><span class="no">02</span><h3>Classic croissants</h3><span class="tag">Get there early</span><p>Flaky, buttery, baked every morning.</p></div>
-    <div class="item" data-peek="nata"><span class="no">03</span><h3>Pastéis de nata</h3><p>Burnished custard tarts with flaky pastry.</p></div>
-    <div class="item" data-peek="choc"><span class="no">04</span><h3>Vegan Victory cake</h3><span class="tag">Vegan</span><p>Rich chocolate, no compromise.</p></div>
-    <div class="item" data-peek="pastryshelf"><span class="no">05</span><h3>Peanut nougat &amp; almond kisses</h3><p>Made in-house, wrapped to take home or give away.</p></div>
-  </div>
-  <div class="panel" id="drinks" role="tabpanel">
-    <div class="item" data-peek="flatwhite"><span class="no">01</span><h3>Vietnamese iced coffee</h3><span class="tag">Try it</span><p>Strong coffee over ice with condensed milk.</p></div>
-    <div class="item" data-peek="barista"><span class="no">02</span><h3>Coffee</h3><p>Proper espresso drinks, poured all day.</p></div>
-    <div class="item" data-peek="latte"><span class="no">03</span><h3>Teas &amp; brews</h3><p>Loose-leaf teas, hot and iced.</p></div>
-    <div class="item" data-peek="wine"><span class="no">04</span><h3>Local wines</h3><p>From Steenberg, Chamonix, Thelema, Bouchard Finlayson, Rijks and Creation.</p></div>
-  </div>
-  <p class="note">Prices on the day. Ask us about allergies and dietary needs.</p>
-</div><div class="peek" id="peek" aria-hidden="true"><img alt=""></div></section>
+</div></section>
 
 <section class="fire" id="bread">
   <canvas id="embers" aria-hidden="true"></canvas>
@@ -273,7 +273,7 @@
   <div class="evs">
     <a class="evc rv" href="/events/#oyster" style="background:#E7F0F6"><div><span class="when">Every July</span><b>Oyster Festival dinner</b><span>A four-course evening celebrating local flavours.</span></div><span class="go">More →</span></a>
     <a class="evc rv" href="/events/#brunch" style="background:var(--ember);color:#fff"><div><span class="when">Summer Sundays</span><b>Brunchy Sundays</b><span>Our seasonal Sunday brunch. Watch Instagram for dates.</span></div><span class="go">More →</span></a>
-    <a class="evc rv" href="/events/#cakes" style="background:#F6E3E6"><div><span class="when">All year</span><b>Wedding &amp; celebration cakes</b><span>Made by our pastry team, styled for your day.</span></div><span class="go">Enquire →</span></a>
+    <a class="evc rv" href="/events/#cakes" style="background:#F6E3E6"><div><span class="when">All year</span><b>Wedding &amp; celebration cakes</b><span>Made by our pastry team, styled for your day.</span></div><span class="go">Pre-order →</span></a>
   </div>
 </div></section>
 
@@ -296,7 +296,9 @@
       <span class="eyebrow">Come and see us</span>
       <h2 class="split" style="margin-top:14px">On the<br><span class="it">island.</span></h2>
       <p class="addr rv">10 The Boatshed, Long Street<br>Thesen Island, Knysna</p>
+      <div class="nobook rv"><b>No bookings.</b> First come, first served, every day we're open.</div>
       <div class="hours rv" data-hours></div>
+      <div class="service rv"><span class="eyebrow">Through the day</span><div data-service></div></div>
       <div class="ctas rv">
         <a class="btn fill" href="tel:+27443025705">044 302 5705</a>
         <a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=-34.0477133,23.047419" target="_blank" rel="noopener">Directions</a>
@@ -308,6 +310,7 @@
 </div></section>
 
 <script src="/assets/photos.js"></script>
+<script src="/assets/menu.js"></script>
 <script src="/assets/site.js"></script>
 <script>
 (function(){
@@ -327,11 +330,14 @@ function runDay(){if(innerWidth<=900)return;const r=day.getBoundingClientRect(),
 addEventListener("resize",()=>{sizeDay();runDay()});addEventListener("load",()=>{sizeDay();runDay()});sizeDay();
 addEventListener("scroll",runDay,{passive:true});
 
-document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===t));document.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on",p.id===t.dataset.p))}));
-const peek=document.getElementById("peek"),pimg=peek.querySelector("img");let px=0,py=0,tx=0,ty=0;
-document.querySelectorAll(".item[data-peek]").forEach(it=>{it.addEventListener("mouseenter",()=>{pimg.src=PHOTO(it.dataset.peek,700);peek.classList.add("on")});it.addEventListener("mouseleave",()=>peek.classList.remove("on"))});
-addEventListener("mousemove",e=>{tx=e.clientX+170;ty=e.clientY},{passive:true});
-(function f(){requestAnimationFrame(f);px+=(tx-px)*.15;py+=(ty-py)*.15;peek.style.left=px+"px";peek.style.top=py+"px"})();
+const esc=t=>String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const mt=document.getElementById("mtabs"),mp=document.getElementById("mpanels");
+mt.innerHTML=MENU.map((m,i)=>`<button class="tab" role="tab" aria-selected="${i===0}" data-p="m-${m.id}">${esc(m.tab)}</button>`).join("");
+mp.innerHTML=MENU.map((m,i)=>`<div class="panel${i===0?" on":""}${m.wine?" wine":""}" id="m-${m.id}" role="tabpanel">
+ <div class="ptop"><h3>${esc(m.title)}</h3>${m.time?`<span class="ptime">${m.time}</span>`:""}</div>${m.note?`<p class="pnote">${esc(m.note)}</p>`:""}
+ <div class="groups">${m.groups.map(g=>`<div class="grp"><h4>${esc(g.name)}</h4>${g.items.map(([n,d,pr,f])=>`<div class="mi"><div class="mn"><b>${esc(n)}${f==="pb"?' <span class="pb" title="Plant based">🌿</span>':f==="v"?' <span class="pb" title="Vegan option">🌿</span>':""}</b><span class="pr">${esc(pr)}</span></div>${d?`<p>${esc(d)}</p>`:""}</div>`).join("")}</div>`).join("")}</div>
+ ${m.foot?`<p class="pfoot">${esc(m.foot)}</p>`:""}</div>`).join("");
+mt.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{mt.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x===t));mp.querySelectorAll(".panel").forEach(p=>p.classList.toggle("on",p.id===t.dataset.p));const top=document.getElementById("menu").querySelector(".tabs").getBoundingClientRect().top;if(top<0)scrollBy({top:top-90,behavior:"smooth"})}));
 
 const imgs=[...document.querySelectorAll("#reel img")];let ri=0;
 if(!reduce)setInterval(()=>{imgs[ri].classList.remove("on");ri=(ri+1)%imgs.length;imgs[ri].classList.add("on")},3800);
