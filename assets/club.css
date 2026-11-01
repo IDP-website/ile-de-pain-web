@@ -1,7 +1,7 @@
 /* The Island Club · app styles (member app, staff, admin) */
-:root{--flour:#FFFDF9;--cream:#FBF3E8;--oat:#F2E4D0;--crust:#B4532E;--ink:#2B1E16;--ink-2:#76665A;--ember:#F26B1D;--ember-d:#D9560C;
+:root{--flour:#FFFDF9;--cream:#FBF3E8;--oat:#F2E4D0;--crust:#E17000;--ink:#2B1E16;--ink-2:#76665A;--ember:#E17000;--ember-d:#C26000;
   --ok:#2F7D4F;--ok-bg:#E5F4EA;--bad:#B3261E;--bad-bg:#FBE4E2;--line:rgba(43,30,22,.12);
-  --f-d:"Fraunces",Georgia,serif;--f-b:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
+  --f-d:"Lora",Georgia,serif;--f-b:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:light}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--cream);color:var(--ink);font-family:var(--f-b);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh;min-height:100dvh}
@@ -43,7 +43,7 @@ input:focus,select:focus{outline:none;border-color:var(--ember)}
 .pill i{width:7px;height:7px;border-radius:50%;background:currentColor}
 
 /* member card */
-.card{position:relative;border-radius:28px;padding:22px;color:#fff;overflow:hidden;background:linear-gradient(150deg,#F26B1D,#C2410C);box-shadow:0 30px 60px -30px rgba(194,65,12,.7)}
+.card{position:relative;border-radius:28px;padding:22px;color:#fff;overflow:hidden;background:linear-gradient(150deg,#E17000,#B85C00);box-shadow:0 30px 60px -30px rgba(184,92,0,.7)}
 .card.harbour{background:linear-gradient(150deg,#2F5B7A,#1B3A52)}
 .card.royale{background:linear-gradient(150deg,#2B1E16,#5A3A22);box-shadow:0 30px 60px -30px rgba(43,30,22,.8)}
 .card.royale .tier{color:#F2C98A}
@@ -73,7 +73,7 @@ input:focus,select:focus{outline:none;border-color:var(--ember)}
 .hist li:last-child{border-bottom:0}
 .tierpick{display:grid;gap:12px;margin-top:14px}
 .tp{border:2px solid var(--line);border-radius:20px;padding:16px;cursor:pointer;background:#fff;text-align:left;display:block;width:100%}
-.tp[aria-pressed="true"]{border-color:var(--ember);box-shadow:0 0 0 4px rgba(242,107,29,.12)}
+.tp[aria-pressed="true"]{border-color:var(--ember);box-shadow:0 0 0 4px rgba(225,112,0,.12)}
 .tp .h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .tp h3{font-size:24px;font-style:italic}
 .tp .pr{font-weight:800}
