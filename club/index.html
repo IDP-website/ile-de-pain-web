@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>The Island Club · île de païn, Thesen Island</title>
+<meta name="description" content="Your weekly loaf, your morning cappuccino and a few island perks. Join the île de païn Island Club.">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#F26B1D">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..800,0..100;1,9..144,300..700,0..100&family=Manrope:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.chero{position:relative;overflow:hidden;padding:150px 0 90px}
+.chero .sun{right:-12%;top:-20%}
+.chero .wrap{position:relative;z-index:2}
+.chero h1{font-size:clamp(70px,11vw,170px);font-weight:300;letter-spacing:-.05em;line-height:.86;margin-top:18px}
+.chero h1 em{color:var(--ember)}
+.chero .lede{font-family:var(--f-d);font-size:clamp(22px,2.4vw,30px);font-weight:300;line-height:1.2;max-width:26ch;margin-top:26px}
+.chero .ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:10px}
+@media (max-width:960px){.tiers{grid-template-columns:1fr}}
+.tier{border-radius:34px;padding:30px;display:flex;flex-direction:column;min-height:520px;position:relative;overflow:hidden}
+.tier.islander{background:linear-gradient(160deg,#FFE9D8,#FBF3E8)}
+.tier.harbour{background:linear-gradient(160deg,#DCEBF5,#F4F8FB)}
+.tier.royale{background:linear-gradient(160deg,#2B1E16,#5A3A22);color:#FFF6EC}
+.tier .lvl{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;opacity:.7}
+.tier h3{font-size:clamp(40px,4vw,56px);font-style:italic;margin-top:14px}
+.tier.royale h3{color:#F2C98A}
+.tier .tag{margin-top:10px;font-size:17px;opacity:.85}
+.tier .price{font-family:var(--f-d);font-size:46px;margin-top:24px;letter-spacing:-.03em}
+.tier .price small{font-family:var(--f-b);font-size:14px;opacity:.7;letter-spacing:0}
+.tier ul{list-style:none;padding:0;margin:22px 0 26px;display:grid;gap:10px;font-size:16px}
+.tier li{padding-top:10px;border-top:1px solid rgba(43,30,22,.12)}
+.tier.royale li{border-color:rgba(255,246,236,.18)}
+.tier .btn{margin-top:auto;justify-content:center}
+.tier.royale .btn.fill{background:#F2C98A;border-color:#F2C98A;color:#2B1E16}
+.tier .badge{position:absolute;top:24px;right:24px;background:var(--ember);color:#fff;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:7px 12px;border-radius:999px}
+.sec{padding:clamp(80px,10vw,130px) 0}
+.sec h2{font-size:clamp(46px,6vw,90px)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px}
+@media (max-width:900px){.steps{grid-template-columns:1fr}}
+.step{background:#fff;border-radius:28px;padding:28px}
+.step b{font-family:var(--f-d);font-style:italic;font-size:54px;color:var(--ember);line-height:1}
+.step h3{font-size:28px;margin-top:14px}
+.step p{color:var(--ink-2);margin-top:10px}
+.faq{max-width:820px;margin-top:30px}
+.faq details{border-bottom:1px solid var(--line);padding:20px 0}
+.faq summary{font-family:var(--f-d);font-size:clamp(22px,2.2vw,28px);cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:20px}
+.faq summary:after{content:"+";color:var(--ember)}
+.faq details[open] summary:after{content:"–"}
+.faq p{color:var(--ink-2);margin-top:12px;max-width:62ch}
+</style>
+</head>
+<body data-page="club">
+
+<section class="chero sky"><div class="sun" aria-hidden="true"></div><div class="wrap">
+  <span class="eyebrow">Membership</span>
+  <h1 class="split">The Island<br><em>Club.</em></h1>
+  <p class="lede rv">Your weekly loaf, your morning cappuccino and a few island perks. On your phone, ready at the counter.</p>
+  <div class="ctas rv"><a class="btn fill" href="#tiers">See the tiers</a><a class="btn" href="/club/app/">Member sign in</a></div>
+</div></section>
+
+<section class="sec" id="tiers" style="padding-top:20px"><div class="wrap">
+  <div class="tiers" id="tierlist"></div>
+  <p class="rv" style="color:var(--ink-2);margin-top:20px;font-size:14px">Weekly treats reset every Tuesday when we open. Unused treats don't roll over. Prices in Rand.</p>
+</div></section>
+
+<section class="sec" style="background:var(--cream)"><div class="wrap">
+  <span class="eyebrow">How it works</span>
+  <h2 class="split" style="margin-top:14px">Simple as <span class="it">bread.</span></h2>
+  <div class="steps">
+    <div class="step rv"><b>1</b><h3>Join on your phone</h3><p>Create your account, pick your tier and add the club to your home screen. It works like an app, with nothing to download from a store.</p></div>
+    <div class="step rv"><b>2</b><h3>Pay and you're in</h3><p>Online card payments are coming soon. Until then, pay at the counter and we'll switch your membership on straight away.</p></div>
+    <div class="step rv"><b>3</b><h3>Show your card</h3><p>Open your card at the counter. We scan it, see what you have left this week and hand it over. That's it.</p></div>
+  </div>
+</div></section>
+
+<section class="sec"><div class="wrap">
+  <span class="eyebrow">Good to know</span>
+  <h2 class="split" style="margin-top:14px">Questions.</h2>
+  <div class="faq">
+    <details class="rv"><summary>Which loaves count as a classic loaf?</summary><p>Any loaf from our IDP Classics: Companio, Bagatta, Fougasse, Baguette, 100% Vollkorn, 100% Rye or the Organic “O”.</p></details>
+    <details class="rv"><summary>When do my treats reset?</summary><p>Every Tuesday, when we open for the week. Monthly treats like the Flower Friday bouquet reset on the 1st. Anything unused doesn't carry over.</p></details>
+    <details class="rv"><summary>Can I share my membership?</summary><p>Your card is personal and shows your name at the counter. The code on it changes every 30 seconds, so screenshots and old codes won't scan.</p></details>
+    <details class="rv"><summary>Does membership mean I can book a table?</summary><p>We don't take bookings for anyone. It's first come, first served, every day we're open, members included.</p></details>
+    <details class="rv"><summary>How do I get my birthday treat?</summary><p>Add your birthday in the app (Harbour Club and Île Royale). Your treat is waiting for you any day in your birthday month.</p></details>
+  </div>
+</div></section>
+
+<script src="/assets/photos.js"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/club-config.js"></script>
+<script src="/assets/club.js"></script>
+<script src="/assets/site.js"></script>
+<script>
+(async function(){
+const {tiers, rand, esc, perkLines} = CLUB;
+const ts = await tiers();
+const lv = ["Tier one","Tier two","Tier three"];
+document.getElementById("tierlist").innerHTML = ts.map((t,i) => `<article class="tier ${t.id} rv">${t.id==="harbour"?'<span class="badge">Most loved</span>':""}
+  <span class="lvl">${lv[i]||""}</span><h3>${esc(t.name)}</h3><p class="tag">${esc(t.tagline||"")}</p>
+  <div class="price">${rand(t.price_cents)}<small> / month</small></div>
+  <ul>${perkLines(t).map(l=>`<li>${esc(l)}</li>`).join("")}${(t.extras||[]).map(x=>`<li>✨ ${esc(x)}</li>`).join("")}</ul>
+  <a class="btn fill" href="/club/app/?join=${t.id}">Join ${esc(t.name)}</a></article>`).join("");
+IDP.observe(document.getElementById("tierlist"));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "The Island Club · île de païn",
+  "short_name": "Island Club",
+  "description": "Your île de païn membership card, treats and visits.",
+  "id": "/club/app/",
+  "start_url": "/club/app/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF3E8",
+  "theme_color": "#F26B1D",
+  "icons": [
+    {"src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

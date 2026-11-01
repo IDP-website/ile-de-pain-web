@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Counter scanner · île de païn</title>
+<meta name="theme-color" content="#14100D">
+<link rel="manifest" href="/staff/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="IDP Counter">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Manrope:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="/assets/club.css">
+</head>
+<body class="staff">
+<div class="app">
+  <div class="top"><img src="/assets/img/logo-orange.png" alt="île de païn"><div class="who" id="who" style="color:#B9A99B"></div></div>
+  <div class="demo hide" id="demo">Demo mode: any email signs in. Scan any QR code, or tap “Test with a demo card”.</div>
+
+  <section id="v-auth" class="hide">
+    <div class="panel">
+      <span class="eyebrow" style="color:#F2A46B">Counter scanner</span>
+      <h1 style="font-size:34px;margin-top:8px">Staff sign in</h1>
+      <form id="f-auth"><label>Email<input name="email" type="email" autocomplete="username" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn fill block">Sign in</button><div class="msg hide" id="m-auth"></div></form>
+    </div>
+  </section>
+
+  <section id="v-scan" class="hide">
+    <div id="scanbox">
+      <div class="reader" id="reader"></div>
+      <p class="muted small" style="text-align:center;margin-top:12px">Point the camera at the member's card in their app.</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:10px"><button class="btn" style="border-color:#3A2F27;color:#fff" id="b-cam">Start camera</button><button class="btn hide" style="border-color:#3A2F27;color:#fff" id="b-demo">Test with a demo card</button></div>
+    </div>
+    <div id="res" class="hide"></div>
+    <p class="small" style="text-align:center;margin-top:26px"><button class="link" style="color:#F2A46B" id="b-out">Sign out</button></p>
+  </section>
+</div>
+<div class="flash hide" id="flash"></div>
+
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/vendor/html5-qrcode.min.js"></script>
+<script src="/assets/club-config.js"></script>
+<script src="/assets/club.js"></script>
+<script>
+(function(){
+const {DEMO, rpc, auth, ITEMS, PER, esc, fmtDate} = CLUB;
+const $ = id => document.getElementById(id);
+if(DEMO){ $("demo").classList.remove("hide"); $("b-demo").classList.remove("hide"); }
+let scanner = null, busy = false, token = null;
+
+$("f-auth").onsubmit = async e => { e.preventDefault(); const f=e.target, m=$("m-auth"); m.className="msg hide";
+  try{ await auth.signIn(f.email.value.trim(), f.password.value); await load(); }catch(err){ m.textContent=err.message; m.className="msg err"; } };
+$("b-out").onclick = async () => { await stopCam(); await auth.signOut(); load(); };
+
+async function startCam(){
+  if(!scanner) scanner = new Html5Qrcode("reader", {verbose:false});
+  try{
+    await scanner.start({facingMode:"environment"}, {fps:10, qrbox:(w,h)=>{const s=Math.floor(Math.min(w,h)*.72);return{width:s,height:s}}}, onScan, ()=>{});
+    $("b-cam").classList.add("hide");
+  }catch(err){ $("b-cam").classList.remove("hide"); $("b-cam").textContent = "Allow camera and try again"; }
+}
+async function stopCam(){ try{ if(scanner && scanner.isScanning) await scanner.stop(); }catch(e){} }
+$("b-cam").onclick = startCam;
+$("b-demo").onclick = () => onScan("IDPCLUB:demo." + Math.floor(Date.now()/30000) + ".demo");
+
+async function onScan(text){
+  if(busy) return; busy = true; token = text;
+  try{ if(navigator.vibrate) navigator.vibrate(60); }catch(e){}
+  await stopCam();
+  $("scanbox").classList.add("hide");
+  const r = await rpc("staff_lookup", {token:text}).catch(err => ({ok:false, reason:err.message}));
+  render(r);
+}
+function render(r){
+  const box = $("res"); box.classList.remove("hide");
+  if(!r.ok){
+    box.innerHTML = `<div class="result bad"><div class="big">✕</div><h2>${r.name?esc(r.name):"Can't use this card"}</h2>${r.tier_name?`<p style="margin-top:4px;font-weight:700">${esc(r.tier_name)}</p>`:""}<p style="margin-top:10px">${esc(r.reason||"Not valid.")}</p></div><button class="btn fill block" id="b-next">Scan next card</button>`;
+  } else {
+    const b = r.balances||{}, keys = Object.keys(ITEMS).filter(k => b[k] && b[k].allow > 0);
+    box.innerHTML = `<div class="result ok"><div class="big">✓</div><h2>${esc(r.name||"Member")}</h2><p style="margin-top:4px;font-weight:700">${esc(r.tier_name)} · paid until ${fmtDate(r.paid_until)}</p>
+      <div class="ritems">${keys.length?keys.map(k=>`<div class="ri"><div style="font-size:26px">${ITEMS[k].icon}</div><div class="tx"><b>${esc(ITEMS[k].label)}</b><span>${b[k].left} of ${b[k].allow} left ${PER[b[k].per]}</span></div><button data-i="${k}" ${b[k].left<1?"disabled":""}>Give 1</button></div>`).join(""):'<p>No treats on this tier right now.</p>'}</div></div>
+      <button class="btn block" style="border-color:#3A2F27;color:#fff" id="b-next">Done · scan next card</button>`;
+    box.querySelectorAll(".ri button").forEach(bt => bt.onclick = () => give(bt.dataset.i, bt));
+  }
+  $("b-next").onclick = next;
+}
+async function give(item, bt){
+  bt.disabled = true;
+  const r = await rpc("staff_redeem", {token, item, qty:1}).catch(err => ({ok:false, reason:err.message}));
+  if(r.ok){
+    const f = $("flash"); f.textContent = `${ITEMS[item].icon}  ${ITEMS[item].label} given`; f.style.background = "var(--ok)"; f.classList.remove("hide");
+    setTimeout(()=>f.classList.add("hide"), 900);
+    const again = await rpc("staff_lookup", {token}).catch(()=>null);
+    render(again && again.ok ? again : {...again, ok:true, balances:r.balances, name:document.querySelector(".result h2")?.textContent, tier_name:"", paid_until:null});
+  } else {
+    const f = $("flash"); f.textContent = r.reason || "Couldn't give that"; f.style.background = "var(--bad)"; f.classList.remove("hide");
+    setTimeout(()=>f.classList.add("hide"), 1800); bt.disabled = false;
+    if(/expired/i.test(r.reason||"")) setTimeout(next, 1900);
+  }
+}
+async function next(){ busy = false; token = null; $("res").classList.add("hide"); $("scanbox").classList.remove("hide"); await startCam(); }
+
+async function load(){
+  const u = await auth.user();
+  $("v-auth").classList.toggle("hide", !!u); $("v-scan").classList.toggle("hide", !u);
+  $("who").textContent = u ? (u.email||"") : "";
+  if(u) startCam();
+}
+load();
+})();
+</script>
+</body>
+</html>

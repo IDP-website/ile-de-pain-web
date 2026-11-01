@@ -7,6 +7,9 @@
 <title>île de païn · Artisan bakery & café, Thesen Island, Knysna</title>
 <meta name="description" content="Wood-fired sourdough, pastries, breakfast and lunch on Thesen Island, Knysna, since 2002. Open Tuesday to Saturday, 08:00 to 15:30. No bookings, first come first served.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23F26B1D'/%3E%3Ctext x='32' y='42' font-family='Georgia' font-style='italic' font-size='26' text-anchor='middle' fill='%23fff'%3Eidp%3C/text%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#F26B1D">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..800,0..100;1,9..144,300..700,0..100&family=Manrope:wght@400;500;600;700&display=swap">
@@ -110,6 +113,13 @@
 .gph span{position:absolute;left:12px;top:12px;background:var(--ember);color:#fff;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;padding:7px 12px;border-radius:999px}
 .gcard h3{font-size:clamp(26px,2.4vw,32px);margin:20px 10px 0}
 .gcard p{color:var(--ink-2);margin:8px 10px 0;font-size:15px}
+.clubband{padding:clamp(70px,9vw,120px) 0 0}
+.cb{background:linear-gradient(150deg,#2B1E16,#5A3A22);color:#FFF6EC;border-radius:40px;padding:clamp(30px,5vw,64px);display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap}
+.cb h2{font-size:clamp(50px,7vw,104px)}
+.cb h2 em{color:#F2C98A}
+.cb p{margin-top:18px;max-width:46ch;color:rgba(255,246,236,.85);font-size:18px}
+.cbb{display:flex;gap:10px;flex-wrap:wrap}
+.cb .btn.fill{background:#F2C98A;border-color:#F2C98A;color:#2B1E16}
 .nobook{margin-top:26px;background:var(--ember);color:#fff;border-radius:18px;padding:14px 18px;font-size:16px}
 .service{margin-top:26px}
 .service [data-service] div{display:flex;justify-content:space-between;gap:12px;padding:10px 4px;border-bottom:1px solid var(--line);font-size:15px}
@@ -263,6 +273,11 @@
     <div class="reel rv" id="reel"><img class="on" data-photo="oven" alt="The wood-fired oven"><img data-photo="flatbread" alt="Bread coming out of the fire"><img data-photo="cooling" alt="Loaves cooling on a rack"><img data-photo="sourdough" alt="A sourdough loaf"></div>
   </div>
 </section>
+
+<section class="clubband"><div class="wrap"><div class="cb rv">
+  <div><span class="eyebrow" style="color:#F2C98A">Membership</span><h2 style="margin-top:12px">The Island <em>Club.</em></h2><p>Your weekly loaf, your morning cappuccino and a few island perks, on a card in your phone. Three tiers, from R199 a month.</p></div>
+  <div class="cbb"><a class="btn fill" href="/club/">See the tiers</a><a class="btn" href="/club/app/" style="color:#FFF6EC">Member sign in</a></div>
+</div></div></section>
 
 <section class="teaser"><div class="wrap">
   <div class="head"><div><span class="eyebrow">Gallery</span><h2 class="split" style="margin-top:14px">Life on<br>the <span class="it">island.</span></h2></div><a class="btn rv" href="/gallery/">See the gallery →</a></div>

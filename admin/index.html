@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Island Club admin · île de païn</title>
+<meta name="theme-color" content="#FBF3E8">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Manrope:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="/assets/club.css">
+</head>
+<body class="admin">
+<div class="app">
+  <div class="top"><img src="/assets/img/logo-orange.png" alt="île de païn"><div class="who" id="who"></div></div>
+  <div class="demo hide" id="demo">Demo mode: sample members until the database is connected. Any email signs in.</div>
+
+  <section id="v-auth" class="hide" style="max-width:420px;margin:0 auto">
+    <div class="panel"><span class="eyebrow">The Island Club</span><h1 style="font-size:34px;margin-top:8px">Admin sign in</h1>
+      <form id="f-auth"><label>Email<input name="email" type="email" autocomplete="username" required></label>
+      <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="btn fill block">Sign in</button><div class="msg hide" id="m-auth"></div></form></div>
+  </section>
+
+  <section id="v-main" class="hide">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+      <div><span class="eyebrow">The Island Club</span><h1 style="font-size:44px;margin-top:6px">Members</h1></div>
+      <div style="display:flex;gap:8px"><a class="btn" href="/staff/">Open scanner</a><button class="btn" id="b-refresh">Refresh</button><button class="btn" id="b-out">Sign out</button></div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="tools">
+      <input id="q" placeholder="Search name, email or phone">
+      <select id="fs"><option value="">Everyone</option><option value="active">Active</option><option value="pending">Awaiting first payment</option><option value="overdue">Overdue</option><option value="staff">Staff &amp; admin</option></select>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>Member</th><th>Tier</th><th>Status</th><th>Paid until</th><th>Visits (30 days)</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+    <h2 style="font-size:30px;margin:34px 0 12px">Today at the counter</h2>
+    <div class="tablewrap"><table><thead><tr><th>Time</th><th>Member</th><th>Given</th><th>By</th></tr></thead><tbody id="today"></tbody></table></div>
+  </section>
+</div>
+
+<dialog id="dlg"><form method="dialog" id="f-dlg"></form></dialog>
+
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/club-config.js"></script>
+<script src="/assets/club.js"></script>
+<script>
+(function(){
+const {DEMO, rpc, auth, ITEMS, rand, esc, fmtDate} = CLUB;
+const $ = id => document.getElementById(id);
+if(DEMO) $("demo").classList.remove("hide");
+let data = null;
+
+$("f-auth").onsubmit = async e => { e.preventDefault(); const f=e.target, m=$("m-auth"); m.className="msg hide";
+  try{ await auth.signIn(f.email.value.trim(), f.password.value); await load(); }catch(err){ m.textContent=err.message; m.className="msg err"; } };
+$("b-out").onclick = async () => { await auth.signOut(); load(); };
+$("b-refresh").onclick = () => refresh();
+$("q").oninput = draw; $("fs").onchange = draw;
+
+const today = () => new Date().toISOString().slice(0,10);
+function state(m){
+  if(m.role !== "member") return {k:"staff", html:`<span class="pill">${m.role==="admin"?"Admin":"Staff"}</span>`};
+  if(m.active) return {k:"active", html:'<span class="pill ok"><i></i>Active</span>'};
+  if(m.status==="pending") return {k:"pending", html:'<span class="pill warn"><i></i>Awaiting payment</span>'};
+  if(m.status==="active") return {k:"overdue", html:'<span class="pill bad"><i></i>Overdue</span>'};
+  if(!m.tier_id) return {k:"none", html:'<span class="pill">No tier</span>'};
+  return {k:m.status, html:`<span class="pill">${esc(m.status)}</span>`};
+}
+function draw(){
+  if(!data) return;
+  const T = Object.fromEntries((data.tiers||[]).map(t=>[t.id,t]));
+  const ms = data.members||[], members = ms.filter(m=>m.role==="member");
+  const n = k => members.filter(m=>state(m).k===k).length;
+  $("stats").innerHTML = [
+    ["Active members", n("active")], ["Monthly income", rand(data.mrr_cents||0)],
+    ["Awaiting payment", n("pending")], ["Overdue", n("overdue")]
+  ].map(([l,v])=>`<div class="stat"><span class="eyebrow">${l}</span><b>${v}</b></div>`).join("");
+  const q = $("q").value.toLowerCase(), fs = $("fs").value;
+  const list = ms.filter(m => (!q || [m.full_name,m.email,m.phone].join(" ").toLowerCase().includes(q)) && (!fs || state(m).k===fs));
+  $("rows").innerHTML = list.map(m => { const s = state(m); return `<tr>
+    <td><b>${esc(m.full_name||"(no name)")}</b><span class="sub">${esc(m.email||"")}${m.phone?" · "+esc(m.phone):""}</span></td>
+    <td>${m.tier_id&&T[m.tier_id]?esc(T[m.tier_id].name)+`<span class="sub">${rand(T[m.tier_id].price_cents)} / month</span>`:'<span class="muted">-</span>'}</td>
+    <td>${s.html}</td><td>${m.paid_until?fmtDate(m.paid_until):'<span class="muted">-</span>'}</td><td>${m.uses_30d||0}</td>
+    <td><div class="acts">${m.tier_id?`<button data-a="pay" data-id="${m.id}">Record payment</button>`:""}<button data-a="edit" data-id="${m.id}">Change</button></div></td></tr>`; }).join("") || '<tr><td colspan="6" class="muted">No one matches.</td></tr>';
+  $("rows").querySelectorAll("button").forEach(b => b.onclick = () => (b.dataset.a==="pay"?payDlg:editDlg)(ms.find(m=>m.id===b.dataset.id), T));
+  $("today").innerHTML = (data.today||[]).map(r=>`<tr><td>${new Date(r.created_at).toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}</td><td>${esc(r.full_name)}</td><td>${ITEMS[r.item]?.icon||""} ${r.qty>1?r.qty+" × ":""}${esc(ITEMS[r.item]?.label||r.item)}</td><td class="muted">${esc(r.staff||"")}</td></tr>`).join("") || '<tr><td colspan="4" class="muted">Nothing given out yet today.</td></tr>';
+}
+function dialog(html, onok){
+  const f = $("f-dlg"); f.innerHTML = html + `<div class="msg hide" id="m-dlg"></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><button class="btn" value="cancel">Cancel</button><button class="btn fill" value="ok" id="dlg-ok">Save</button></div>`;
+  $("dlg").showModal();
+  $("dlg-ok").onclick = async e => { e.preventDefault(); try{ await onok(f); $("dlg").close(); refresh(); }catch(err){ const m=$("m-dlg"); m.textContent=err.message; m.className="msg err"; } };
+}
+function payDlg(m, T){
+  const t = T[m.tier_id];
+  dialog(`<span class="eyebrow">Record payment</span><h2 style="font-size:28px;margin-top:6px">${esc(m.full_name)}</h2>
+    <p class="muted small" style="margin-top:6px">${esc(t.name)}, ${rand(t.price_cents)} a month. Currently ${m.paid_until?"paid until "+fmtDate(m.paid_until):"not paid yet"}.</p>
+    <label>Months paid<select name="months">${[1,2,3,6,12].map(x=>`<option value="${x}">${x} month${x>1?"s":""} · ${rand(t.price_cents*x)}</option>`).join("")}</select></label>
+    <label>Reference (optional)<input name="ref" placeholder="e.g. card machine, EFT ref"></label>`,
+    f => rpc("admin_record_payment", {uid:m.id, months:+f.months.value, reference:f.ref.value||null}));
+}
+function editDlg(m, T){
+  dialog(`<span class="eyebrow">Change member</span><h2 style="font-size:28px;margin-top:6px">${esc(m.full_name)}</h2>
+    <label>Tier<select name="tier">${Object.values(T).map(t=>`<option value="${t.id}" ${t.id===m.tier_id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>
+    <label>Status<select name="status">${["active","pending","paused","cancelled"].map(s=>`<option ${s===(m.status||"pending")?"selected":""}>${s}</option>`).join("")}</select></label>
+    <label>Access<select name="role">${[["member","Member"],["staff","Staff (can scan)"],["admin","Admin (this dashboard)"]].map(([v,l])=>`<option value="${v}" ${v===m.role?"selected":""}>${l}</option>`).join("")}</select></label>`,
+    async f => { if(f.role.value!==m.role) await rpc("admin_set_role",{uid:m.id,new_role:f.role.value});
+      if(f.role.value==="member") await rpc("admin_set_member",{uid:m.id,tier:f.tier.value,status:f.status.value}); });
+}
+async function refresh(){ try{ data = await rpc("admin_overview"); draw(); }catch(err){ $("rows").innerHTML = `<tr><td colspan="6" class="muted">${esc(/admin only/.test(err.message)?"This account isn't an admin.":err.message)}</td></tr>`; } }
+async function load(){
+  const u = await auth.user();
+  $("v-auth").classList.toggle("hide", !!u); $("v-main").classList.toggle("hide", !u);
+  $("who").textContent = u ? (u.email||"") : "";
+  if(u) refresh();
+}
+load();
+})();
+</script>
+</body>
+</html>

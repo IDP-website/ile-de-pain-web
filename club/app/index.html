@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>The Island Club · île de païn</title>
+<meta name="theme-color" content="#F26B1D">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Island Club">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Manrope:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="/assets/club.css">
+</head>
+<body>
+<div class="app">
+  <div class="top"><a href="/club/"><img src="/assets/img/logo-orange.png" alt="île de païn"></a><div class="who" id="who"></div></div>
+  <div class="demo hide" id="demo">Demo mode: sample data until the database is connected. Any email and password will sign you in.</div>
+
+  <!-- signed out -->
+  <section id="v-auth" class="hide">
+    <div class="panel">
+      <span class="eyebrow">The Island Club</span>
+      <h1 style="font-size:38px;margin:8px 0 6px">Welcome<span style="color:var(--ember);font-style:italic"> back.</span></h1>
+      <p class="muted small" style="margin-bottom:16px">Your membership card, your weekly treats and your history, all in one place.</p>
+      <div class="seg" role="group"><button aria-pressed="true" data-m="in">Sign in</button><button aria-pressed="false" data-m="up">Join</button></div>
+      <form id="f-auth" novalidate>
+        <div id="up-only" class="hide">
+          <label>Your name<input name="name" autocomplete="name"></label>
+          <label>Mobile number<input name="phone" type="tel" autocomplete="tel"></label>
+        </div>
+        <label>Email<input name="email" type="email" autocomplete="email" required></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" minlength="8" required></label>
+        <button class="btn fill block" type="submit" id="b-auth">Sign in</button>
+        <p class="small" style="margin-top:12px;text-align:center"><button type="button" class="link" id="forgot">Forgot your password?</button></p>
+        <div class="msg hide" id="m-auth"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- new password after reset link -->
+  <section id="v-newpw" class="hide">
+    <div class="panel"><h2 style="font-size:30px">Choose a new password</h2>
+      <form id="f-newpw"><label>New password<input name="password" type="password" minlength="8" autocomplete="new-password" required></label>
+      <button class="btn fill block">Save password</button><div class="msg hide" id="m-newpw"></div></form></div>
+  </section>
+
+  <!-- signed in, no tier yet -->
+  <section id="v-pick" class="hide">
+    <div class="panel">
+      <span class="eyebrow">Choose your tier</span>
+      <h2 style="font-size:32px;margin-top:8px">Which island are you?</h2>
+      <div class="tierpick" id="tierpick"></div>
+      <button class="btn fill block" id="b-pick" disabled>Continue</button>
+      <div class="msg hide" id="m-pick"></div>
+    </div>
+  </section>
+
+  <!-- the card -->
+  <section id="v-card" class="hide">
+    <div class="card" id="card">
+      <div class="row"><div><div class="tier" id="c-tier"></div><div class="nm" id="c-name"></div></div><img class="logo" src="/assets/img/logo-orange.png" alt=""></div>
+      <div class="qrbox" id="qr"><div class="veil hide" id="veil"></div></div>
+      <div class="timer" id="timer"><i id="tbar"></i></div>
+      <div class="foot"><span id="c-status"></span><span>Show this at the counter</span></div>
+    </div>
+    <div class="panel" id="p-pay" style="margin-top:14px">
+      <span class="eyebrow">Payment</span>
+      <p style="margin-top:8px" id="pay-text"></p>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <span class="eyebrow">What's left</span>
+      <div class="bal" id="bal"></div>
+      <p class="small muted" style="margin-top:8px">Weekly treats reset every Tuesday when we open. Unused treats don't roll over.</p>
+    </div>
+    <div class="install hide" id="install"><span style="font-size:26px">📲</span><div><b>Add the club to your home screen</b><span id="inst-txt">Your card opens instantly, even with weak signal.</span></div><button class="btn fill" id="b-inst" style="padding:10px 14px">Add</button></div>
+    <div class="panel">
+      <span class="eyebrow">Recent visits</span>
+      <ul class="hist" id="hist"></ul>
+    </div>
+    <div class="panel">
+      <span class="eyebrow">Your details</span>
+      <form id="f-prof"><label>Name<input name="name"></label><label>Mobile<input name="phone" type="tel"></label>
+      <label>Birthday <span class="muted" style="font-weight:400">(for your birthday treat; can only be set once)</span><input name="birthday" type="date"></label>
+      <button class="btn block">Save details</button><div class="msg hide" id="m-prof"></div></form>
+      <p class="small" style="margin-top:16px;display:flex;justify-content:space-between"><button class="link" id="b-change">Change tier</button><button class="link" id="b-out">Sign out</button></p>
+    </div>
+  </section>
+
+  <p class="small muted" style="text-align:center;margin-top:24px"><a href="/">iledepain website</a> · <a href="/club/">About the club</a></p>
+</div>
+
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/vendor/qrcode.js"></script>
+<script src="/assets/club-config.js"></script>
+<script src="/assets/club.js"></script>
+<script>
+(function(){
+const {DEMO, rpc, tiers, auth, ITEMS, PER, rand, esc, fmtDate, fmtTime, perkLines} = CLUB;
+const $ = id => document.getElementById(id);
+const views = ["v-auth","v-newpw","v-pick","v-card"];
+const show = v => views.forEach(x => $(x).classList.toggle("hide", x !== v));
+const msg = (id, t, ok) => { const m=$(id); m.textContent=t; m.className="msg "+(ok?"ok":"err"); if(!t) m.classList.add("hide"); };
+if(DEMO) $("demo").classList.remove("hide");
+
+let mode = "in", card = null, tick = null, picked = null;
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  mode = b.dataset.m; document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x===b));
+  $("up-only").classList.toggle("hide", mode!=="up"); $("b-auth").textContent = mode==="up" ? "Create my account" : "Sign in";
+  $("f-auth").password.autocomplete = mode==="up" ? "new-password" : "current-password"; msg("m-auth","");
+});
+const qs = new URLSearchParams(location.search);
+if(qs.get("join")){ picked = qs.get("join"); document.querySelector('.seg [data-m="up"]').click(); }
+
+$("f-auth").onsubmit = async e => {
+  e.preventDefault(); const f = e.target; msg("m-auth","");
+  if(!f.email.value || f.password.value.length < 8) return msg("m-auth","Please fill in your email and a password of at least 8 characters.");
+  if(mode==="up" && !f.name.value.trim()) return msg("m-auth","Please tell us your name.");
+  $("b-auth").disabled = true;
+  try{
+    if(mode==="up"){ const r = await auth.signUp(f.email.value.trim(), f.password.value, f.name.value.trim(), f.phone.value.trim());
+      if(r.needsConfirm){ msg("m-auth","Almost there! We've emailed you a link to confirm your address. Open it, then come back here to sign in.", true); return; } }
+    else await auth.signIn(f.email.value.trim(), f.password.value);
+    await load();
+  }catch(err){ msg("m-auth", err.message); } finally { $("b-auth").disabled = false; }
+};
+$("forgot").onclick = async () => {
+  const em = $("f-auth").email.value.trim(); if(!em) return msg("m-auth","Type your email above first, then tap Forgot your password.");
+  try{ await auth.reset(em); msg("m-auth","If there's an account for that email, a reset link is on its way.", true); }catch(err){ msg("m-auth", err.message); }
+};
+$("f-newpw").onsubmit = async e => { e.preventDefault(); try{ await auth.setPassword(e.target.password.value); msg("m-newpw","Saved. You're signed in.", true); setTimeout(load, 900); }catch(err){ msg("m-newpw", err.message); } };
+auth.onChange(ev => { if(ev==="PASSWORD_RECOVERY") show("v-newpw"); });
+
+async function renderPick(){
+  const ts = await tiers();
+  $("tierpick").innerHTML = ts.map(t => `<button class="tp" data-t="${t.id}" aria-pressed="${picked===t.id}"><div class="h"><h3>${esc(t.name)}</h3><span class="pr">${rand(t.price_cents)}<span class="muted small"> / month</span></span></div><p class="small muted" style="margin-top:4px">${esc(t.tagline||"")}</p><ul>${perkLines(t).map(l=>`<li>${esc(l)}</li>`).join("")}${(t.extras||[]).filter(x=>!/Member card/.test(x)).map(x=>`<li>✨ ${esc(x)}</li>`).join("")}</ul></button>`).join("");
+  $("tierpick").querySelectorAll(".tp").forEach(b => b.onclick = () => { picked = b.dataset.t; $("tierpick").querySelectorAll(".tp").forEach(x=>x.setAttribute("aria-pressed", x===b)); $("b-pick").disabled = false; });
+  $("b-pick").disabled = !picked;
+}
+$("b-pick").onclick = async () => { try{ await rpc("choose_tier",{tier:picked}); await load(); }catch(err){ msg("m-pick", err.message); } };
+$("b-change").onclick = async () => { picked = card?.tier; show("v-pick"); await renderPick(); };
+
+function drawQR(token){
+  const q = qrcode(0, "M"); q.addData(token); q.make();
+  const old = $("qr").querySelector("svg"); if(old) old.remove();
+  $("qr").insertAdjacentHTML("afterbegin", q.createSvgTag({cellSize:6, margin:0, scalable:true}));
+}
+function renderCard(c){
+  card = c;
+  $("card").className = "card " + (c.tier||"") + (c.active ? "" : " off");
+  $("c-tier").textContent = c.tier_name || "Island Club";
+  $("c-name").textContent = c.name || "";
+  $("who").innerHTML = esc(c.name || "");
+  const pill = c.active ? '<span class="pill ok"><i></i>Active</span>' : c.status==="pending" ? '<span class="pill warn"><i></i>Awaiting payment</span>' : '<span class="pill bad"><i></i>Not active</span>';
+  $("c-status").innerHTML = pill;
+  drawQR(c.token);
+  const veil = $("veil");
+  if(!c.active){ veil.classList.remove("hide"); veil.textContent = c.status==="pending" ? "Your card switches on as soon as your first payment is in." : "Your membership isn't active right now."; }
+  else veil.classList.add("hide");
+  $("pay-text").innerHTML = c.active ? `Paid up until <b>${fmtDate(c.paid_until)}</b>. ${esc(c.tier_name)}, ${rand(c.price_cents)} a month.`
+    : c.status==="pending" ? `You've chosen <b>${esc(c.tier_name)}</b> at ${rand(c.price_cents)} a month. Online card payments are coming soon. For now, pay at the counter and we'll switch your card on straight away.`
+    : `Your payment is overdue${c.paid_until?` (paid until ${fmtDate(c.paid_until)})`:""}. Chat to us at the counter to renew.`;
+  const b = c.balances || {};
+  const keys = Object.keys(ITEMS).filter(k => b[k] && b[k].allow > 0);
+  $("bal").innerHTML = keys.length ? keys.map(k => { const x=b[k]; return `<div class="b"><div class="ic">${ITEMS[k].icon}</div><div class="tx"><b>${x.left} ${ITEMS[k].label.toLowerCase()}${x.left===1?"":"s"} left</b><span>${x.allow} ${PER[x.per]} · ${ITEMS[k].note}</span></div><div class="dots">${Array.from({length:x.allow},(_,i)=>`<i class="${i<x.used?"u":""}"></i>`).join("")}</div></div>`; }).join("")
+    : '<p class="muted small" style="padding:10px 0">Your treats will show here once your membership is active.</p>';
+  const h = c.history || [];
+  $("hist").innerHTML = h.length ? h.map(r => `<li><span>${ITEMS[r.item]?.icon||""} ${r.qty>1?r.qty+" × ":""}${esc(ITEMS[r.item]?.label||r.item)}</span><span class="muted">${fmtTime(r.created_at)}</span></li>`).join("") : '<li class="muted">No visits yet. See you on the island!</li>';
+  const f = $("f-prof"); if(!f.dataset.filled){ f.name.value = c.name||""; f.phone.value = c.phone||""; f.birthday.value = c.birthday||""; f.birthday.disabled = !!c.birthday; f.dataset.filled = 1; }
+}
+// refresh the code exactly when it expires
+async function refresh(){
+  clearTimeout(tick);
+  try{ const c = await rpc("my_card"); renderCard(c);
+    const left = Math.max(1, c.expires_in||30), bar = $("tbar");
+    bar.style.transition = "none"; bar.style.transform = `scaleX(${left/30})`; void bar.offsetWidth;
+    bar.style.transition = `transform ${left}s linear`; bar.style.transform = "scaleX(0)";
+    tick = setTimeout(refresh, left*1000 + 300);
+  }catch(err){ tick = setTimeout(refresh, 8000); }
+}
+document.addEventListener("visibilitychange", () => { if(!document.hidden && card) refresh(); });
+
+$("f-prof").onsubmit = async e => { e.preventDefault(); const f=e.target;
+  try{ if(!DEMO) await rpc("update_my_profile",{full_name:f.name.value.trim(), phone:f.phone.value.trim(), birthday:f.birthday.value||null}); msg("m-prof","Saved.", true); f.dataset.filled=""; refresh(); }catch(err){ msg("m-prof", err.message); } };
+$("b-out").onclick = async () => { await auth.signOut(); card=null; clearTimeout(tick); $("who").textContent=""; show("v-auth"); };
+
+// install prompt
+let deferred = null;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferred = e; $("install").classList.remove("hide"); });
+$("b-inst").onclick = async () => { if(deferred){ deferred.prompt(); deferred = null; $("install").classList.add("hide"); } };
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent), standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+if(isIOS && !standalone){ $("install").classList.remove("hide"); $("inst-txt").textContent = "Tap the Share button, then “Add to Home Screen”."; $("b-inst").classList.add("hide"); }
+
+async function load(){
+  const u = await auth.user();
+  if(!u){ show("v-auth"); return; }
+  const c = await rpc("my_card").catch(()=>null);
+  if(!c || c.status==="none" || !c.tier){ show("v-pick"); await renderPick(); if(c) $("who").textContent = c.name||""; return; }
+  show("v-card"); refresh();
+}
+load();
+})();
+</script>
+</body>
+</html>
