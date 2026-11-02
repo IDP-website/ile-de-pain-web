@@ -240,9 +240,9 @@
   <div class="pin">
     <div class="head"><div class="wrap"><div><span class="eyebrow">A day on the island</span><h2 style="margin-top:12px">From fire to <span class="it">last loaf.</span></h2></div><div class="clock" id="clock">before dawn</div></div></div>
     <div class="track" id="track">
-      <article class="slide" data-clock="before dawn"><div class="ph"><img data-photo="oven" alt="The wood-fired oven glowing" loading="lazy"></div><div class="tx" style="--tone:#FFF4EA"><span class="n">01 / 05</span><div><div class="time">Before dawn</div><h3>The fire goes on.</h3><p>Long before the doors open, the bakers are at the wood-fired oven and the sourdough is going in.</p></div></div></article>
+      <article class="slide" data-clock="before dawn"><div class="ph"><img data-photo="oven" alt="Fresh loaves on the bread wall" loading="lazy"></div><div class="tx" style="--tone:#FFF4EA"><span class="n">01 / 05</span><div><div class="time">Before dawn</div><h3>The fire goes on.</h3><p>Long before the doors open, the bakers are at the wood-fired oven and the sourdough is going in.</p></div></div></article>
       <article class="slide" data-clock="08:00"><div class="ph"><img data-photo="frenchtoast" alt="Breakfast at île de païn" loading="lazy"></div><div class="tx" style="--tone:#FFF9EF"><span class="n">02 / 05</span><div><div class="time">08:00</div><h3>Breakfast.</h3><p>Doors open, first coffees and warm croissants. Turkish eggs, shakshuka meatballs and the Boatshed breakfast until 11:30.</p></div></div></article>
-      <article class="slide" data-clock="11:30"><div class="ph"><img data-photo="nata" alt="Pastéis de nata" loading="lazy"></div><div class="tx" style="--tone:#F4F8FB"><span class="n">03 / 05</span><div><div class="time">11:30</div><h3>Coffee &amp; treats.</h3><p>The half hour in between. Coffee, tea and something from the patisserie while the kitchen turns to lunch.</p></div></div></article>
+      <article class="slide" data-clock="11:30"><div class="ph"><img data-photo="hightea" alt="A stand of pastries and treats" loading="lazy"></div><div class="tx" style="--tone:#F4F8FB"><span class="n">03 / 05</span><div><div class="time">11:30</div><h3>Coffee &amp; treats.</h3><p>The half hour in between. Coffee, tea and something from the patisserie while the kitchen turns to lunch.</p></div></div></article>
       <article class="slide" data-clock="12:00"><div class="ph"><img data-photo="salad" alt="A fresh lunch bowl" loading="lazy"></div><div class="tx" style="--tone:#FFF6E8"><span class="n">04 / 05</span><div><div class="time">12:00</div><h3>Long lunch.</h3><p>Popeye salad, confit duck, sourdough flatbreads and a glass of something local. Lunch runs until 15:00.</p></div></div></article>
       <article class="slide" data-clock="15:00"><div class="ph"><img data-photo="display" alt="The bread shelves" loading="lazy"></div><div class="tx" style="--tone:#FBE9DA"><span class="n">05 / 05</span><div><div class="time">15:00</div><h3>Tea &amp; last loaves.</h3><p>Afternoon tea and pastries until 15:30. Don't leave empty-handed: we'll wrap any bread for you to take home.</p></div></div></article>
     </div>
@@ -260,9 +260,9 @@
 <section class="gifts" id="gifts"><div class="wrap">
   <div class="head"><div><span class="eyebrow">Coming soon</span><h2 class="split" style="margin-top:14px">Gift <span class="it">sets.</span></h2></div><p class="rv" style="color:var(--ink-2);max-width:36ch">Our bakes, beautifully boxed, to order online and give to someone who deserves it. The first sets are on their way.</p></div>
   <div class="gset">
-    <article class="gcard rv"><div class="gph"><img data-photo="pastryshelf" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Confectioner's Box</h3><p>House-made caramels, nuts and chocolates from our retail counter.</p></article>
+    <article class="gcard rv"><div class="gph"><img data-photo="jars" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Confectioner's Box</h3><p>House-made caramels, nuts and chocolates from our retail counter.</p></article>
     <article class="gcard rv"><div class="gph"><img data-photo="loaves" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Baker's Basket</h3><p>Our signature loaves and stix, ready for the table.</p></article>
-    <article class="gcard rv"><div class="gph"><img data-photo="natas2" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Patisserie Box</h3><p>A selection of our favourite pastries, boxed to give.</p></article>
+    <article class="gcard rv"><div class="gph"><img data-photo="patcounter" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Patisserie Box</h3><p>A selection of our favourite pastries, boxed to give.</p></article>
     <article class="gcard rv"><div class="gph"><img data-photo="tools" alt="" loading="lazy"><span>Coming soon</span></div><h3>The Home Baker's Kit</h3><p>Our own île de païn lame, scraper and baking tools, for sourdough at home.</p></article>
   </div>
 </div></section>
@@ -281,7 +281,7 @@
         <div class="bread"><b>Focaccia</b><span>Golden &amp; olive-oil rich</span></div>
       </div>
     </div>
-    <div class="reel rv" id="reel"><img class="on" data-photo="oven" alt="The wood-fired oven"><img data-photo="flatbread" alt="Bread coming out of the fire"><img data-photo="cooling" alt="Loaves cooling on a rack"><img data-photo="sourdough" alt="A sourdough loaf"></div>
+    <div class="reel rv" id="reel"><img class="on" data-photo="oven" alt="Loaves on the bread wall"><img data-photo="flatbread" alt="Fougasse on the shelf"><img data-photo="cooling" alt="Companio on the shelf"><img data-photo="sourdough" alt="A sourdough loaf"></div>
   </div>
 </section>
 
@@ -373,7 +373,7 @@ mt.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{mt.queryS
 const imgs=[...document.querySelectorAll("#reel img")];let ri=0;
 if(!reduce)setInterval(()=>{imgs[ri].classList.remove("on");ri=(ri+1)%imgs.length;imgs[ri].classList.add("on")},3800);
 
-const strip=document.getElementById("strip"),picks=["croissants","pastries","loaves","nata"].map(id=>PHOTOS.find(p=>p.id===id));
+const strip=document.getElementById("strip"),picks=["croissants","hightea","loaves","pour"].map(id=>PHOTOS.find(p=>p.id===id));
 strip.innerHTML=picks.map(p=>`<button aria-label="Open photo: ${p.alt}"><img src="${p.src}" alt="${p.alt}" loading="lazy"></button>`).join("");
 strip.querySelectorAll("button").forEach((b,i)=>b.onclick=()=>IDP.lightbox(picks,i));
 
