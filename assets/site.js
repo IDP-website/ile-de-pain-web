@@ -17,12 +17,12 @@ window.IDP={PHONE,PHONE_TXT,EMAIL,MAPS,IG,FB,DAYS,OPEN,SERVICE,HM,ICON,reduce};
 /* chrome: nav, drawer, footer, bar */
 const links=[["/","Home","home"],["/#menu","Menu","menu"],["/gallery/","Gallery","gallery"],["/events/","Events","events"],["/#gifts","Gift Sets","gifts"],["/club/","Island Club","club"],["/#visit","Visit","visit"]];
 const nav=document.createElement("header");nav.className="nav";nav.id="nav";
-nav.innerHTML=`<div class="wrap"><a class="logo" href="/" aria-label="île de païn home"><img src="/assets/img/logo-orange.png" alt="île de païn"></a>
+nav.innerHTML=`<div class="wrap"><a class="logo" href="/" aria-label="île de païn home"><img src="/assets/img/logo-orange.svg" alt="île de païn"></a>
 <ul>${links.map(([h,l,k])=>`<li><a href="${h}"${k===page?' aria-current="page"':""}>${l}</a></li>`).join("")}</ul>
 <a class="btn fill desk" href="tel:${PHONE}">${ICON.phone}Call us</a><button class="menu-btn" aria-label="Open menu" aria-expanded="false"><span></span></button></div>`;
 document.body.prepend(nav);
 const dr=document.createElement("div");dr.className="drawer";dr.setAttribute("aria-hidden","true");
-dr.innerHTML=`<div class="top"><b>île de païn</b><button class="x" aria-label="Close menu">×</button></div>
+dr.innerHTML=`<div class="top"><img src="/assets/img/logo-white.svg" alt="île de païn" class="dlogo"><button class="x" aria-label="Close menu">×</button></div>
 <nav>${links.map(([h,l],i)=>`<a href="${h}"><span>0${i+1}</span>${l}</a>`).join("")}</nav>
 <div class="foot"><a href="tel:${PHONE}">${PHONE_TXT}</a><a href="${IG}" target="_blank" rel="noopener">Instagram</a><span>Tue to Sat · 08:00 to 15:30 · No bookings</span></div>`;
 document.body.append(dr);
@@ -32,7 +32,7 @@ mb.onclick=()=>setDr(true);dr.querySelector(".x").onclick=()=>setDr(false);dr.qu
 addEventListener("keydown",e=>{if(e.key==="Escape")setDr(false)});
 
 const ft=document.createElement("footer");
-ft.innerHTML=`<div class="wrap"><div class="big">île de païn</div>
+ft.innerHTML=`<div class="wrap"><div class="big"><img src="/assets/img/logo-white.svg" alt="île de païn" class="flogo"></div>
 <div class="cols">
  <div><b>Find us</b>10 The Boatshed, Long Street<br>Thesen Island, Knysna<br><a href="${MAPS}" target="_blank" rel="noopener">Get directions →</a></div>
  <div><b>Open</b>Tuesday to Saturday<br>08:00 to 15:30<br>Closed Sunday & Monday<br>No bookings, first come first served</div>
@@ -98,7 +98,7 @@ function close(){LB.classList.remove("open");document.body.style.overflow=""}
 
 /* page curtain: lift on arrival, drop on internal navigation */
 if(!reduce){
-  const cu=document.createElement("div");cu.className="curtain";cu.innerHTML="<b>île de païn</b>";document.body.append(cu);
+  const cu=document.createElement("div");cu.className="curtain";cu.innerHTML='<img src="/assets/img/logo-white.svg" alt="île de païn" class="clogo">';document.body.append(cu);
   const lift=()=>requestAnimationFrame(()=>requestAnimationFrame(()=>cu.classList.add("up")));
   if(document.readyState==="complete")lift();else{addEventListener("load",lift);setTimeout(lift,900)}
   addEventListener("pageshow",e=>{if(e.persisted){cu.classList.remove("cover");cu.classList.add("up")}});

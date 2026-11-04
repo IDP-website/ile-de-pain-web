@@ -45,8 +45,8 @@ p{margin:0}
 .menu-btn{display:none;width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);background:#fff;cursor:pointer;place-items:center}
 .menu-btn span{display:block;width:18px;height:2px;background:var(--ink);box-shadow:0 6px 0 var(--ink),0 -6px 0 var(--ink)}
 @media (max-width:900px){ .nav ul,.nav .btn.desk{display:none} .menu-btn{display:grid} }
-.drawer{position:fixed;inset:0;z-index:90;background:var(--ember);color:#fff;display:flex;flex-direction:column;padding:24px var(--gut) 40px;transform:translateY(-100%);transition:transform .55s cubic-bezier(.7,0,.2,1)}
-.drawer.open{transform:none}
+.drawer{position:fixed;inset:0;z-index:90;background:var(--ember);color:#fff;display:flex;flex-direction:column;padding:24px var(--gut) 40px;transform:translateY(-100%);overflow-y:auto;visibility:hidden;transition:transform .55s cubic-bezier(.7,0,.2,1),visibility 0s linear .55s}
+.drawer.open{transform:none;visibility:visible;transition:transform .55s cubic-bezier(.7,0,.2,1)}
 .drawer .top{display:flex;justify-content:space-between;align-items:center}
 .drawer .top b{font-family:var(--f-d);font-style:italic;font-weight:400;font-size:27px}
 .drawer .x{width:46px;height:46px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-size:22px;cursor:pointer}
@@ -121,3 +121,7 @@ footer .credit{margin-top:50px;font-size:12px;opacity:.7}
 @media (hover:none),(pointer:coarse){.cur{display:none}}
 @media (prefers-reduced-motion:reduce){.curtain{display:none}}
 .logo img{display:block;height:34px;width:auto}@media (max-width:600px){.logo img{height:28px}}
+
+.drawer .dlogo{height:40px;width:auto;display:block}
+footer .big .flogo{display:block;width:min(100%,900px);height:auto}
+.curtain .clogo{width:min(60vw,420px);height:auto}
