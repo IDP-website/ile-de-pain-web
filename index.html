@@ -55,9 +55,10 @@
 .marq span:after{content:"✳";font-style:normal;font-size:.5em;color:#FFE0C8}
 @keyframes marq{to{transform:translateX(-50%)}}
 .intro{padding:clamp(90px,13vw,170px) 0}
-.intro .grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(30px,6vw,90px);align-items:end}
+.intro .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(30px,6vw,90px);align-items:end}
 @media (max-width:900px){.intro .grid{grid-template-columns:1fr}}
-.intro h2{font-size:clamp(50px,7vw,108px);margin-top:18px}
+.intro h2{font-size:clamp(46px,6vw,96px);margin-top:18px}
+@media (min-width:901px){.intro h2{white-space:nowrap}}
 .intro .big{font-size:clamp(19px,1.7vw,22px);color:var(--ink-2);max-width:46ch}
 .facts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:60px}
 @media (max-width:900px){.facts{grid-template-columns:1fr 1fr}}
@@ -236,7 +237,7 @@
 
 <section class="intro"><div class="wrap">
   <div class="grid">
-    <div><span class="eyebrow">A Knysna institution since 2002</span><h2 class="split">Come hungry.<br>Leave with a<br><span class="it">loaf</span> under<br>your arm.</h2></div>
+    <div><span class="eyebrow">A Knysna institution since 2002</span><h2 class="split">Come hungry.<br>Leave with<br>a <span class="it">loaf</span> under<br>your arm.</h2></div>
     <p class="big rv">An artisan bakery and café on Thesen Island. Breads from our wood-fired oven, pastries still warm from the morning, proper coffee, and breakfast and lunch made with care by the IDP family. On a good day, take the terrace under the red umbrellas.</p>
   </div>
   <div class="facts">

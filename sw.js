@@ -2,7 +2,7 @@
    Pages: network first (always fresh), fall back to the saved copy when offline.
    Assets: served from the cache, refreshed in the background.
    Database calls are never cached. */
-const V = "idp-v8";
+const V = "idp-v9";
 const SHELL = ["/", "/club/", "/club/app/", "/staff/", "/assets/site.css", "/assets/site.js", "/assets/club.css", "/assets/club.js",
   "/assets/club-config.js", "/assets/menu.js", "/assets/photos.js", "/assets/vendor/supabase.js", "/assets/vendor/qrcode.js",
   "/assets/vendor/html5-qrcode.min.js", "/assets/img/logo-orange.png","/assets/img/logo-orange.svg","/assets/img/logo-white.svg", "/assets/icons/icon-192.png"];
