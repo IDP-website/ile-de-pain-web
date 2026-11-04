@@ -39,7 +39,7 @@ ft.innerHTML=`<div class="wrap"><div class="big"><img src="/assets/img/logo-whit
  <div><b>Say hello</b><a href="tel:${PHONE}">${PHONE_TXT}</a><br><a href="mailto:${EMAIL}">${EMAIL}</a></div>
  <div><b>Follow</b><a href="${IG}" target="_blank" rel="noopener">Instagram</a><br><a href="${FB}" target="_blank" rel="noopener">Facebook</a></div>
 </div>
-<p class="credit">Authentic artisans · circa 2002 &nbsp;·&nbsp; Website by Jay Steenkamp · jaysteenkamp.com</p></div>`;
+<p class="credit">Authentic artisans · circa 2002</p></div>`;
 document.body.append(ft);
 const bar=document.createElement("nav");bar.className="bar";bar.setAttribute("aria-label","Quick actions");
 bar.innerHTML=`<a href="tel:${PHONE}">${ICON.phone}Call</a><a class="fill" href="${MAPS}" target="_blank" rel="noopener">${ICON.pin}Directions</a>`;
