@@ -35,7 +35,7 @@ const ft=document.createElement("footer");
 ft.innerHTML=`<div class="wrap"><div class="big"><img src="/assets/img/logo-white.svg" alt="île de païn" class="flogo"></div>
 <div class="cols">
  <div><b>Find us</b>10 The Boatshed, Long Street<br>Thesen Island, Knysna<br><a href="${MAPS}" target="_blank" rel="noopener">Get directions →</a></div>
- <div><b>Open</b>Tuesday to Saturday<br>08:00 to 15:30<br>Closed Sunday & Monday<br><span class="ffest">Festive season, 16 Dec to 9 Jan: 08:00 to 15:00, including Sundays & Mondays. 24 Dec until 13:00. Closed 20, 25 & 26 Dec and 1 & 2 Jan. Normal hours from Tue 12 Jan.</span><br>No bookings, first come first served</div>
+ <div class="fopen"><b>Open</b>Tuesday to Saturday<br>08:00 to 15:30<br>Closed Sunday & Monday<span class="ffest"><b>Festive season</b>16 Dec to 9 Jan: 08:00 to 15:00, including Sundays & Mondays. 24 Dec until 13:00. Closed 20, 25 & 26 Dec and 1 & 2 Jan. Normal hours from Tue 12 Jan.</span><span class="fnb">No bookings, first come first served</span></div>
  <div><b>Say hello</b><a href="tel:${PHONE}">${PHONE_TXT}</a><br><a href="mailto:${EMAIL}">${EMAIL}</a></div>
  <div><b>Follow</b><a href="${IG}" target="_blank" rel="noopener">Instagram</a><br><a href="${FB}" target="_blank" rel="noopener">Facebook</a></div>
 </div>
