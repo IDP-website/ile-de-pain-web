@@ -126,7 +126,7 @@ window.MENU=[
  {name:"Additions",items:[
   ["Whipped cream","","16"],
   ["Vanilla gelato","","28 / 46"]]}
-],foot:"Caramels, nuts, chocolates and other confections are available at the retail counter to take home. Special occasion wedding and birthday cakes available on pre-order."},
+],foot:"Special occasion wedding and birthday cakes available on pre-order."},
 {id:"hot",tab:"Coffee, Chocolate & Tea",title:"Coffee, chocolate & tea",groups:[
  {name:"Coffees, hot & iced",items:[
   ["Cappuccino","","single 38 · double 42"],

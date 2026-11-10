@@ -15,7 +15,7 @@ const ICON={
 window.IDP={PHONE,PHONE_TXT,EMAIL,MAPS,IG,FB,DAYS,OPEN,SERVICE,HM,ICON,reduce};
 
 /* chrome: nav, drawer, footer, bar */
-const links=[["/","Home","home"],["/#menu","Menu","menu"],["/gallery/","Gallery","gallery"],["/events/","Events","events"],["/#gifts","Gift Sets","gifts"],["/club/","Island Club","club"],["/#visit","Visit","visit"]];
+const links=[["/","Home","home"],["/#menu","Menu","menu"],["/gallery/","Gallery","gallery"],["/events/","Events","events"],["/club/","Island Club","club"],["/#visit","Visit","visit"]];
 const nav=document.createElement("header");nav.className="nav";nav.id="nav";
 nav.innerHTML=`<div class="wrap"><a class="logo" href="/" aria-label="île de païn home"><img src="/assets/img/logo-orange.svg" alt="île de païn"></a>
 <ul>${links.map(([h,l,k])=>`<li><a href="${h}"${k===page?' aria-current="page"':""}>${l}</a></li>`).join("")}</ul>

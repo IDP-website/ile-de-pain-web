@@ -19,7 +19,7 @@ const TIERS_FALLBACK = [
    perks:[{item:"loaf",qty:1,per:"week"},{item:"cappuccino",qty:2,per:"week"},{item:"birthday",qty:1,per:"birthday"}], extras:["Birthday pastry on us"]},
   {id:"royale", name:"Île Royale", price_cents:149900, tagline:"The island, every day.",
    perks:[{item:"loaf",qty:2,per:"week"},{item:"cappuccino",qty:5,per:"week"},{item:"cappuccino",qty:1,per:"day"},{item:"pastry",qty:1,per:"week"},{item:"bouquet",qty:1,per:"month"},{item:"birthday",qty:1,per:"birthday"}],
-   extras:["Birthday pastry on us","First access to Gift Sets"]}
+   extras:["Birthday pastry on us"]}
 ];
 const rand = c => "R" + Math.round(c/100).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));

@@ -73,7 +73,7 @@ insert into public.tiers(id,name,price_cents,tagline,perks,extras,sort) values
   array['Birthday pastry on us'],2),
  ('royale','Île Royale',149900,'The island, every day.',
   '[{"item":"loaf","qty":2,"per":"week"},{"item":"cappuccino","qty":5,"per":"week"},{"item":"cappuccino","qty":1,"per":"day"},{"item":"pastry","qty":1,"per":"week"},{"item":"bouquet","qty":1,"per":"month"},{"item":"birthday","qty":1,"per":"birthday"}]',
-  array['Birthday pastry on us','First access to Gift Sets'],3)
+  array['Birthday pastry on us'],3)
 on conflict (id) do update set name=excluded.name, price_cents=excluded.price_cents, tagline=excluded.tagline,
   perks=excluded.perks, extras=excluded.extras, sort=excluded.sort;
 
