@@ -125,3 +125,9 @@ footer .credit{margin-top:50px;font-size:12px;opacity:.7}
 .drawer .dlogo{height:40px;width:auto;display:block}
 footer .big .flogo{display:block;width:min(100%,900px);height:auto}
 .curtain .clogo{width:min(60vw,420px);height:auto}
+
+.festbar{position:relative;z-index:60;background:var(--ember);color:#fff;font-size:14px;line-height:1.35;text-align:center;padding:9px 16px;display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px}
+.festbar b{font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12.5px;align-self:center}
+[data-hours] .fest span:last-child{color:var(--ember);font-weight:600}
+.ffest{color:var(--ember)}
+@media (max-width:600px){.festbar{font-size:13px;padding:8px 12px}.festbar span:last-child{opacity:.9}}
