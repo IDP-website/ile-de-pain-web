@@ -35,7 +35,7 @@ const ft=document.createElement("footer");
 ft.innerHTML=`<div class="wrap"><div class="big"><img src="/assets/img/logo-white.svg" alt="île de païn" class="flogo"></div>
 <div class="cols">
  <div><b>Find us</b>10 The Boatshed, Long Street<br>Thesen Island, Knysna<br><a href="${MAPS}" target="_blank" rel="noopener">Get directions →</a></div>
- <div><b>Open</b>Tuesday to Saturday<br>08:00 to 15:30<br>Closed Sunday & Monday<br><span class="ffest">Festive season, 15 Dec to 15 Jan: every day 07:30 to 16:00 (closed 25 & 26 Dec, 1 & 2 Jan)</span><br>No bookings, first come first served</div>
+ <div><b>Open</b>Tuesday to Saturday<br>08:00 to 15:30<br>Closed Sunday & Monday<br><span class="ffest">Festive season, 16 Dec to 9 Jan: 07:30 to 16:00, including Sundays & Mondays. 24 Dec until 13:00. Closed 20, 25 & 26 Dec and 1 & 2 Jan. Normal hours from Tue 12 Jan.</span><br>No bookings, first come first served</div>
  <div><b>Say hello</b><a href="tel:${PHONE}">${PHONE_TXT}</a><br><a href="mailto:${EMAIL}">${EMAIL}</a></div>
  <div><b>Follow</b><a href="${IG}" target="_blank" rel="noopener">Instagram</a><br><a href="${FB}" target="_blank" rel="noopener">Facebook</a></div>
 </div>
@@ -48,11 +48,11 @@ document.body.append(bar);
 /* time in Knysna */
 function sast(dt){const p=new Intl.DateTimeFormat("en-GB",{timeZone:"Africa/Johannesburg",weekday:"long",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",hour12:false}).formatToParts(dt||new Date());const g=t=>p.find(x=>x.type===t).value;return{day:DAYS.indexOf(g("weekday")),h:(+g("hour")%24)+(+g("minute"))/60,y:+g("year"),m:+g("month"),d:+g("day")}}
 IDP.sast=sast;
-/* festive season: open every day 07:30 to 16:00, 15 Dec to 15 Jan, closed 25 & 26 Dec and 1 & 2 Jan */
-const FEST={open:[7.5,16],closed:["12-25","12-26","1-1","1-2"]};
-const isFest=t=>(t.m===12&&t.d>=15)||(t.m===1&&t.d<=15);
-function hoursOn(t){if(isFest(t))return FEST.closed.includes(t.m+"-"+t.d)?null:FEST.open;return OPEN[t.day]||null}
-function svc(t){const o=hoursOn(t);if(!o)return SERVICE;return SERVICE.map((x,i)=>[i===0?o[0]:x[0],i===SERVICE.length-1?o[1]:x[1],x[2]])}
+/* festive season 2026/27: 16 Dec to 9 Jan, open 07:30 to 16:00 except the closed days below; 24 Dec until 13:00; normal trading again from Tue 12 Jan */
+const FEST={open:[7.5,16],closed:["12-20","12-25","12-26","1-1","1-2"],special:{"12-24":[7.5,13]}};
+const isFest=t=>(t.m===12&&t.d>=16)||(t.m===1&&t.d<=9);
+function hoursOn(t){if(isFest(t)){const k=t.m+"-"+t.d;if(FEST.closed.includes(k))return null;return FEST.special[k]||FEST.open}return OPEN[t.day]||null}
+function svc(t){const o=hoursOn(t);if(!o)return SERVICE;const S=SERVICE.map((x,i)=>[i===0?o[0]:x[0],i===SERVICE.length-1?o[1]:x[1],x[2]]);return S.filter(x=>x[0]<o[1]).map(x=>[x[0],Math.min(x[1],o[1]),x[2]])}
 IDP.hoursOn=hoursOn;IDP.isFest=isFest;
 const dayAt=k=>sast(new Date(Date.now()+k*864e5));
 function nextOpen(){for(let i=1;i<=14;i++){const t=dayAt(i),o=hoursOn(t);if(o)return (i===1?"tomorrow":DAYS[t.day])+" at "+HM(o[0])}return "soon"}
@@ -66,8 +66,8 @@ function status(){
   document.querySelectorAll("[data-service]").forEach(el=>el.innerHTML=S.map(x=>`<div class="${o&&h>=x[0]&&h<x[1]?"now":""}"><span>${HM(x[0])} to ${HM(x[1])}</span><b>${x[2]}</b></div>`).join(""));
   document.querySelectorAll("[data-hours]").forEach(el=>el.innerHTML=[0,1,2,3,4,5,6].map(k=>{const d=dayAt(k),oo=hoursOn(d);const lbl=k===0?`${DAYS[d.day]} · today`:`${DAYS[d.day]} ${d.d} ${MON[d.m]}`;return `<div class="${k===0?"today":""} ${oo?"":"closed"}${isFest(d)?" fest":""}"><span>${lbl}</span><span>${oo?HM(oo[0])+" to "+HM(oo[1]):"Closed"}</span></div>`}).join(""));
 }
-(function(){const t=sast();const show=(t.m>=11)||(t.m===1&&t.d<=15);if(!show)return;
-const b=document.createElement("div");b.className="festbar";b.innerHTML=`<b>Festive hours</b><span>15 Dec to 15 Jan: open every day, 07:30 to 16:00</span><span>Closed 25 & 26 Dec, 1 & 2 Jan</span>`;document.body.prepend(b);const nv=document.getElementById("nav");const fit=()=>{nv.style.top=Math.max(0,b.offsetHeight-scrollY)+"px"};fit();addEventListener("scroll",fit,{passive:true});addEventListener("resize",fit)})();
+(function(){const t=sast();const show=(t.m>=11)||(t.m===1&&t.d<=11);if(!show)return;
+const b=document.createElement("div");b.className="festbar";b.innerHTML=`<b>Festive hours</b><span>16 Dec to 9 Jan: 07:30 to 16:00, including Sundays & Mondays</span><span>24 Dec until 13:00 · Closed 20, 25 & 26 Dec and 1 & 2 Jan</span>`;document.body.prepend(b);const nv=document.getElementById("nav");const fit=()=>{nv.style.top=Math.max(0,b.offsetHeight-scrollY)+"px"};fit();addEventListener("scroll",fit,{passive:true});addEventListener("resize",fit)})();
 status();setInterval(status,60000);
 
 /* the sky follows the real time of day in Knysna */
