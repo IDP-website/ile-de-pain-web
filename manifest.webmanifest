@@ -3,7 +3,7 @@
   "short_name": "Island Club",
   "description": "Your île de païn membership card, treats and visits.",
   "id": "/club/app/",
-  "start_url": "/club/app/",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

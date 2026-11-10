@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    { "source": "/club", "destination": "/", "permanent": false },
+    { "source": "/club/:path*", "destination": "/", "permanent": false }
+  ]
+}
