@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /staff/
+Disallow: /admin/
+Disallow: /club/
+
+Sitemap: https://www.iledepain.co.za/sitemap.xml
