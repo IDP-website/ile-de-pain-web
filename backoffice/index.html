@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Back Office · île de païn</title>
+<meta name="theme-color" content="#FBF3E8">
+<link rel="icon" href="/assets/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/assets/backoffice.css">
+</head>
+<body>
+<section id="login" class="login hide">
+  <form id="f-login" class="card">
+    <img src="/assets/img/logo-orange.png" alt="île de païn" class="lg-logo">
+    <span class="eyebrow">Back Office</span>
+    <h1>Welcome back</h1>
+    <label>Username<input name="user" autocomplete="username" required autocapitalize="none"></label>
+    <label>Password<input name="pass" type="password" autocomplete="current-password" required></label>
+    <button class="btn fill">Sign in</button>
+    <p class="msg hide" id="m-login"></p>
+  </form>
+</section>
+
+<div id="app" class="shell hide">
+  <aside class="side">
+    <div class="brand"><img src="/assets/img/logo-orange.png" alt="île de païn"><span>Back Office</span></div>
+    <p class="side-h">Business</p>
+    <nav id="companies"></nav>
+    <p class="side-h">Workspace</p>
+    <nav id="tabs">
+      <button data-tab="stock" class="on"><i>▦</i>Master Stock</button>
+      <button data-tab="recipes"><i>✎</i>Recipes</button>
+      <button data-tab="take" disabled title="Coming next"><i>✓</i>Stock Take <em>soon</em></button>
+    </nav>
+    <div class="side-foot"><span id="who"></span><button id="b-out" class="link">Sign out</button></div>
+  </aside>
+
+  <main class="main">
+    <!-- STOCK -->
+    <section id="v-stock">
+      <header class="head">
+        <div><span class="eyebrow" id="co-name"></span><h1>Master Stock</h1></div>
+        <div class="head-act"><button class="btn" id="b-export">Export CSV</button><button class="btn fill" id="b-add">+ Add item</button></div>
+      </header>
+      <div class="seed hide" id="seed"><div><b>Load the starting data</b><p>The master stock is empty. Choose the file <i>backoffice-starting-data.json</i> (in your Downloads) to load the Stock Master and the October counts. This is a one-time step.</p></div><label class="btn fill">Choose file<input type="file" id="seed-file" accept=".json" hidden></label><span id="seed-msg" class="saved"></span></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="bar">
+        <div class="search"><span>⌕</span><input id="q" placeholder="Search items, suppliers, categories…" autocomplete="off"></div>
+        <select id="f-sup"><option value="">All suppliers</option></select>
+        <select id="f-dep"><option value="">All departments</option></select>
+        <label class="chip"><input type="checkbox" id="f-mine" checked> Used by this business</label>
+        <label class="chip"><input type="checkbox" id="f-counted"> Counted only</label>
+        <label class="chip warn"><input type="checkbox" id="f-review"> Needs review</label>
+      </div>
+      <div class="tablewrap"><table class="grid" id="t-stock">
+        <thead><tr><th data-s="name">Item</th><th data-s="supplier">Supplier</th><th data-s="category">Category</th><th>Unit</th><th data-s="unit_price" class="r">Price ex VAT</th><th class="r">Cost per</th><th data-s="count" class="r">Count</th><th data-s="value" class="r">Value</th><th class="r">Recipes</th></tr></thead>
+        <tbody></tbody></table></div>
+      <p class="more" id="more"></p>
+    </section>
+
+    <!-- RECIPES -->
+    <section id="v-recipes" class="hide">
+      <header class="head">
+        <div><span class="eyebrow" id="co-name2"></span><h1>Recipes</h1></div>
+        <div class="head-act"><button class="btn fill" id="b-newr">+ New recipe</button></div>
+      </header>
+      <div class="rgrid">
+        <div class="rlist">
+          <div class="search"><span>⌕</span><input id="rq" placeholder="Search recipes…" autocomplete="off"></div>
+          <div class="rcats" id="rcats"></div>
+          <div id="rlist"></div>
+        </div>
+        <div class="redit" id="redit"><div class="empty">Pick a recipe on the left, or create a new one.<br><br>Ingredients come straight from the Master Stock, so costs stay up to date.</div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ITEM DRAWER -->
+<div class="drawer hide" id="drawer"><div class="dr-back" data-close></div><div class="dr-panel" id="dr-panel"></div></div>
+<div class="toast hide" id="toast"></div>
+
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/club-config.js"></script>
+<script src="/assets/backoffice.js"></script>
+</body>
+</html>
