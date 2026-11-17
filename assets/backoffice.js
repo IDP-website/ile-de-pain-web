@@ -5,9 +5,8 @@ const sb=window.supabase.createClient(cfg.url,cfg.anon,{auth:{persistSession:tru
 const USERS={mel:'backoffice@iledepain.co.za'};
 const PERIOD='2026-10';
 const COS=[{id:'idp',name:'île de païn',color:'#E17000'},{id:'gelato',name:'Gelato Infinito',color:'#E9573F'},{id:'nest',name:'Nest Food Bar',color:'#4E7A73'}];
-const RCATS=['Menu item','Bread','Cake & pastry','Prep / sub-recipe','Beverage','Gelato','Other'];
 const YUNITS=['portion','each','g','kg','ml','L'];
-const LUNITS=['g','kg','ml','L','each'];
+const LUNITS=['g','kg','ml','L','each','tsp','tbsp','cup','pinch','dash','bunch','can','slice','stalk'];
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const R=n=>n==null||isNaN(n)?'–':'R'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -16,7 +15,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.remove('hide');c
 const deb=(f,ms=500)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),ms)}};
 
 // ---------- units & costing ----------
-const UN={kg:['w',1000],g:['w',1],l:['v',1000],ml:['v',1],cl:['v',10],each:['n',1],portion:['n',1]};
+const UN={kg:['w',1000],g:['w',1],pinch:['w',0.5],l:['v',1000],ml:['v',1],cl:['v',10],tsp:['v',5],tbsp:['v',15],cup:['v',250],dash:['v',0.6],each:['n',1],portion:['n',1],bunch:['n',1],can:['n',1],slice:['n',1],stalk:['n',1]};
 const un=u=>UN[String(u||'each').toLowerCase()]||UN.each;
 const fam=u=>un(u)[0];
 const toBase=(q,u)=>Number(q||0)*un(u)[1];
@@ -28,14 +27,22 @@ function recipeCost(r,depth=0){
   for(const l of S.lines.filter(x=>x.recipe_id===r.id)){const c=lineCost(l,depth);if(c.cost==null)issues++;else total+=c.cost}
   return{total,issues};
 }
+function convQty(l,toUnit){ // returns {q, approx} in base units of toUnit's family
+  const fl=fam(l.unit),ft=fam(toUnit);if(fl===ft)return{q:toBase(l.qty,l.unit),approx:false};
+  if(fl!=='n'&&ft!=='n')return{q:toBase(l.qty,l.unit),approx:true}; // 1 ml ~ 1 g
+  return null;
+}
 function lineCost(l,depth=0){
+  if(l.no_cost)return{cost:0,free:true};
+  if(l.qty==null||l.qty==='')return{cost:null,why:'No quantity'};
   if(l.item_id){const it=S.byId.get(l.item_id);if(!it)return{cost:null,why:'Item removed'};
-    if(fam(l.unit)!==fam(it.count_unit))return{cost:null,why:`Unit mismatch: item is counted in ${it.count_unit}`};
-    const b=itemBase(it);if(b==null)return{cost:null,why:'No price on item'};return{cost:b*toBase(l.qty,l.unit)}}
+    const b=itemBase(it);if(b==null||!(Number(it.unit_price)>0))return{cost:null,why:'No price on item'};
+    const c=convQty(l,it.count_unit);if(!c)return{cost:null,why:`Unit mismatch: item is priced per ${it.count_size} ${it.count_unit}`};
+    return{cost:b*c.q,approx:c.approx}}
   if(l.sub_recipe_id){const r=S.recipes.find(x=>x.id===l.sub_recipe_id);if(!r)return{cost:null,why:'Sub-recipe removed'};
-    if(fam(l.unit)!==fam(r.yield_unit))return{cost:null,why:`Unit mismatch: recipe yields ${r.yield_unit}`};
-    const c=recipeCost(r,depth+1),y=toBase(r.yield_qty||1,r.yield_unit);return{cost:y?c.total/y*toBase(l.qty,l.unit):null}}
-  return{cost:null,why:'Empty line'};
+    const c=convQty(l,r.yield_unit);if(!c)return{cost:null,why:`Unit mismatch: recipe makes ${r.yield_qty} ${r.yield_unit}`};
+    const t=recipeCost(r,depth+1),y=toBase(r.yield_qty||1,r.yield_unit);return{cost:y?t.total/y*c.q:null,approx:c.approx}}
+  return{cost:null,why:'Not linked to the master stock yet'};
 }
 function recipeNums(r){
   const {total,issues}=recipeCost(r);const per=['portion','each'].includes(r.yield_unit)?total/(r.yield_qty||1):null;
@@ -185,73 +192,106 @@ async function openItem(id){
 }
 
 // ---------- recipes ----------
+const cats=()=>[...new Set(S.recipes.map(r=>r.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 function renderRecipeList(){
-  $('#rcats').innerHTML=['All',...RCATS].map(c=>`<button class="${(S.rcat||'All')===c?'on':''}" data-c="${c}">${c}</button>`).join('');
+  $('#rcats').innerHTML=['All',...cats(),'To check'].map(c=>`<button class="${(S.rcat||'All')===c?'on':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
   $$('#rcats button').forEach(b=>b.onclick=()=>{S.rcat=b.dataset.c==='All'?'':b.dataset.c;renderRecipeList()});
   const q=$('#rq').value.trim().toLowerCase();
-  const L=S.recipes.filter(r=>(!S.rcat||r.category===S.rcat)&&(!q||r.name.toLowerCase().includes(q)));
-  $('#rlist').innerHTML=L.map(r=>{const n=recipeNums(r);return `<div class="ritem ${S.cur===r.id?'on':''}" data-id="${r.id}"><div><b>${esc(r.name)}</b><small>${esc(r.category||'')} · ${R(n.per??n.total)}${n.per!=null?' per '+r.yield_unit:' total'}</small></div>${r.category==='Prep / sub-recipe'?'<span class="gp n">prep</span>':gpTag(n.gp)}</div>`}).join('')||'<p class="muted" style="padding:14px">No recipes yet. Click "+ New recipe" to build the first one.</p>';
-  $$('.ritem').forEach(d=>d.onclick=()=>{S.cur=Number(d.dataset.id);renderRecipeList();renderRecipe()});
+  const L=S.recipes.filter(r=>(!S.rcat||(S.rcat==='To check'?r.needs_check:r.category===S.rcat))&&(!q||r.name.toLowerCase().includes(q)));
+  $('#rlist').innerHTML=L.map(r=>{const n=recipeNums(r);const sub=n.per!=null?`${R(n.per)} per ${esc(r.yield_unit)}`:`${R(n.total)} per batch`;
+    return `<div class="ritem ${S.cur===r.id?'on':''}" data-id="${r.id}"><div><b>${r.needs_check?'<span title="Needs checking">⚑ </span>':''}${esc(r.name)}</b><small>${esc(r.category||'')} · ${sub}${n.issues?` · ${n.issues} to link`:''}</small></div>${r.selling_price?gpTag(n.gp):''}</div>`}).join('')
+    ||'<p class="muted" style="padding:14px">No recipes here yet.</p>';
+  $('#rlist').insertAdjacentHTML('beforeend',`<p style="padding:10px 10px 4px"><label class="link" style="display:inline;color:var(--ink-2)">Import recipes from file<input type="file" id="rimp" accept=".json" hidden></label> <span id="rimp-msg" class="saved"></span></p>`);
+  $('#rimp').addEventListener('change',importRecipes);
+  $$('.ritem').forEach(d=>d.onclick=()=>{S.cur=Number(d.dataset.id);S.link=null;renderRecipeList();renderRecipe()});
 }
 $('#rq').addEventListener('input',deb(renderRecipeList,120));
-$('#b-newr').onclick=async()=>{const {data,error}=await sb.from('bo_recipes').insert({company:S.co,name:'New recipe',category:S.rcat||'Menu item',yield_qty:1,yield_unit:'portion'}).select().single();
+$('#b-newr').onclick=async()=>{const {data,error}=await sb.from('bo_recipes').insert({company:S.co,name:'New recipe',category:(S.rcat&&S.rcat!=='To check')?S.rcat:'Menu item',yield_qty:1,yield_unit:'portion'}).select().single();
   if(error)return toast(error.message);S.recipes.push(data);S.cur=data.id;renderRecipeList();renderRecipe();setTimeout(()=>{const n=$('.rname');n.focus();n.select()},50)};
-const saveRecipe=deb(async(r)=>{const {error}=await sb.from('bo_recipes').update({name:r.name,category:r.category,yield_qty:r.yield_qty,yield_unit:r.yield_unit,selling_price:r.selling_price,notes:r.notes,updated_at:new Date().toISOString()}).eq('id',r.id);
+const saveRecipe=deb(async(r)=>{const {error}=await sb.from('bo_recipes').update({name:r.name,category:r.category,yield_qty:r.yield_qty,yield_unit:r.yield_unit,selling_price:r.selling_price,notes:r.notes,method:r.method,needs_check:r.needs_check,updated_at:new Date().toISOString()}).eq('id',r.id);
   $('#rsaved')&&($('#rsaved').textContent=error?'Not saved: '+error.message:'Saved');renderRecipeList()},600);
+function unitCostLabel(l,it,sr){
+  if(it)return perLabel(it);
+  if(sr){const t=recipeCost(sr).total,y=toBase(sr.yield_qty||1,sr.yield_unit),f=fam(sr.yield_unit);return y?R(t/y*(f==='n'?1:1000))+(f==='w'?' /kg':f==='v'?' /L':' /'+sr.yield_unit):'–'}
+  return '';
+}
 function renderRecipe(){
   const r=S.recipes.find(x=>x.id===S.cur);const box=$('#redit');
   if(!r){box.innerHTML='<div class="empty">Pick a recipe on the left, or create a new one.<br><br>Ingredients come straight from the Master Stock, so costs stay up to date.</div>';return}
-  const lines=S.lines.filter(l=>l.recipe_id===r.id);
+  const lines=S.lines.filter(l=>l.recipe_id===r.id).sort((a,b)=>a.sort-b.sort);let lastSec=null;
+  const rows=lines.map(l=>{const it=l.item_id?S.byId.get(l.item_id):null,sr=l.sub_recipe_id?S.recipes.find(x=>x.id===l.sub_recipe_id):null,c=lineCost(l);
+     const name=it?.name||sr?.name||l.label||'(ingredient)';const linked=!!(it||sr);
+     const sub=l.no_cost?'Not costed':linked?((l.label&&l.label!==name?`“${esc(l.label)}” · `:'')+(it?esc(it.supplier||'Master stock'):'Sub-recipe')):`<span class="nil">Not linked</span> · <button class="link" data-link="${l.id}">Link to stock item</button>`;
+     const sec=l.section&&l.section!==lastSec?`<tr class="secrow"><td colspan="6">${esc(l.section)}</td></tr>`:'';lastSec=l.section||lastSec;
+     const units=LUNITS.concat(l.unit&&!LUNITS.includes(l.unit)?[l.unit]:[]);
+     return sec+`<tr data-l="${l.id}" class="${S.link===l.id?'linking':''}"><td><b>${esc(name)}</b><div class="src">${sub}${l.as_written?` · <i>${esc(l.as_written)}</i>`:''}</div></td>
+      <td class="r"><input class="q" type="number" step="any" value="${esc(l.qty??'')}" data-f="qty"></td>
+      <td><select data-f="unit">${units.map(u=>`<option ${u===l.unit?'selected':''}>${u}</option>`).join('')}</select></td>
+      <td class="r muted">${unitCostLabel(l,it,sr)}</td><td class="r">${c.free?'<span class="muted">–</span>':c.cost!=null?(c.approx?'<span title="Converted at 1 ml ≈ 1 g">≈ </span>':'')+R(c.cost):`<span class="nil" title="${esc(c.why)}">⚠ ${esc(c.why)}</span>`}</td><td class="r"><button class="x" data-del="${l.id}" title="Remove">×</button></td></tr>`}).join('');
   box.innerHTML=`<div class="rhead">
     <label class="rn">Recipe name<input class="rname" id="r-name" value="${esc(r.name)}"></label>
-    <label>Category<select id="r-cat">${RCATS.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}</select></label>
+    <label>Category<input id="r-cat" list="catlist" value="${esc(r.category||'')}"><datalist id="catlist">${cats().map(c=>`<option>${esc(c)}</option>`).join('')}</datalist></label>
     <label>Makes<span style="display:flex;gap:6px"><input id="r-yq" type="number" step="any" value="${esc(r.yield_qty??1)}" style="width:55%"><select id="r-yu" style="width:45%">${YUNITS.map(u=>`<option ${u===r.yield_unit?'selected':''}>${u}</option>`).join('')}</select></span></label>
     <label>Selling price incl VAT<input id="r-sp" type="number" step="any" placeholder="R" value="${esc(r.selling_price??'')}"></label>
     <label>&nbsp;<span class="saved" id="rsaved">Saves automatically</span></label></div>
-   <table class="lines"><thead><tr><th>Ingredient</th><th class="r">Qty</th><th>Unit</th><th class="r">Unit cost</th><th class="r">Line cost</th><th></th></tr></thead><tbody>
-   ${lines.map(l=>{const it=l.item_id?S.byId.get(l.item_id):null,sr=l.sub_recipe_id?S.recipes.find(x=>x.id===l.sub_recipe_id):null,c=lineCost(l);
-     const unitc=it?perLabel(it):sr?(()=>{const t=recipeCost(sr).total,y=toBase(sr.yield_qty||1,sr.yield_unit);const f=fam(sr.yield_unit);return y?R(t/y*(f==='n'?1:1000))+(f==='w'?' /kg':f==='v'?' /L':' /'+sr.yield_unit):'–'})():'–';
-     return `<tr data-l="${l.id}"><td><b>${esc(it?.name||sr?.name||'(removed)')}</b><div class="src">${it?esc(it.supplier||'Master stock'):'Sub-recipe'}</div></td>
-      <td class="r"><input class="q" type="number" step="any" value="${esc(l.qty??'')}" data-f="qty"></td>
-      <td><select data-f="unit">${LUNITS.concat(sr&&!LUNITS.includes(sr.yield_unit)?[sr.yield_unit]:[]).map(u=>`<option ${u===l.unit?'selected':''}>${u}</option>`).join('')}</select></td>
-      <td class="r muted">${unitc}</td><td class="r">${c.cost!=null?R(c.cost):`<span class="nil" title="${esc(c.why)}">⚠ ${esc(c.why)}</span>`}</td><td class="r"><button class="x" data-del="${l.id}" title="Remove">×</button></td></tr>`}).join('')}
-   </tbody></table>
-   <div class="addline"><input id="addq" placeholder="+ Add ingredient: search the master stock or a prep recipe…" autocomplete="off"><div class="sug hide" id="sug"></div></div>
+   ${r.yield_text||r.needs_check?`<div class="rinfo">${r.yield_text?`<span>Batch as written: <b>${esc(r.yield_text)}</b></span>`:''}${r.needs_check?`<span class="flag">⚑ Needs checking <button class="link" id="b-checked">Mark as checked</button></span>`:''}</div>`:''}
+   <table class="lines"><thead><tr><th>Ingredient</th><th class="r">Qty</th><th>Unit</th><th class="r">Unit cost</th><th class="r">Line cost</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+   <div class="addline"><input id="addq" placeholder="${S.link?'Search the stock item to link this ingredient to…':'+ Add ingredient: search the master stock or another recipe…'}" autocomplete="off"><div class="sug hide" id="sug"></div></div>
    <div class="totals" id="tot"></div>
-   <label style="margin-top:16px">Method / notes<textarea id="r-notes" rows="3">${esc(r.notes||'')}</textarea></label>
+   <label style="margin-top:16px">Method<textarea id="r-method" rows="${Math.min(14,Math.max(3,(r.method||'').split('\n').length+1))}">${esc(r.method||'')}</textarea></label>
+   <label style="margin-top:10px">Notes<textarea id="r-notes" rows="2">${esc(r.notes||'')}</textarea></label>
+   ${r.source?`<p class="saved" style="margin-top:8px">Source: ${esc(r.source)}</p>`:''}
    <div class="dr-act"><button class="btn danger" id="b-delr">Delete recipe</button><button class="btn" id="b-dup">Duplicate</button></div>`;
   renderTotals(r);
-  const upd=()=>{r.name=$('#r-name').value;r.category=$('#r-cat').value;r.yield_qty=+$('#r-yq').value||1;r.yield_unit=$('#r-yu').value;r.selling_price=$('#r-sp').value===''?null:+$('#r-sp').value;r.notes=$('#r-notes').value;
+  const upd=()=>{r.name=$('#r-name').value;r.category=$('#r-cat').value.trim()||null;r.yield_qty=+$('#r-yq').value||1;r.yield_unit=$('#r-yu').value;r.selling_price=$('#r-sp').value===''?null:+$('#r-sp').value;r.notes=$('#r-notes').value;r.method=$('#r-method').value;
     $('#rsaved').textContent='Saving…';renderTotals(r);saveRecipe(r)};
-  ['#r-name','#r-yq','#r-sp','#r-notes'].forEach(s=>$(s).addEventListener('input',upd));['#r-cat','#r-yu'].forEach(s=>$(s).addEventListener('change',upd));
+  ['#r-name','#r-yq','#r-sp','#r-notes','#r-method','#r-cat'].forEach(x=>$(x).addEventListener('input',upd));$('#r-yu').addEventListener('change',upd);
+  $('#b-checked')&&($('#b-checked').onclick=()=>{r.needs_check=false;upd();renderRecipe()});
   $$('.lines tr[data-l]').forEach(tr=>{const l=S.lines.find(x=>x.id==tr.dataset.l);
-    tr.querySelectorAll('[data-f]').forEach(inp=>inp.addEventListener('change',async()=>{l[inp.dataset.f]=inp.dataset.f==='qty'?+inp.value:inp.value;
+    tr.querySelectorAll('[data-f]').forEach(inp=>inp.addEventListener('change',async()=>{l[inp.dataset.f]=inp.dataset.f==='qty'?(inp.value===''?null:+inp.value):inp.value;
       const {error}=await sb.from('bo_recipe_lines').update({qty:l.qty,unit:l.unit}).eq('id',l.id);if(error)toast(error.message);renderRecipe();renderRecipeList()}))});
+  $$('[data-link]').forEach(b=>b.onclick=()=>{S.link=+b.dataset.link;const l=S.lines.find(x=>x.id===S.link);renderRecipe();const q=$('#addq');q.value=(l.label||'').replace(/\(.*?\)|,.*$/g,'').trim();q.focus();q.dispatchEvent(new Event('input'))});
   $$('[data-del]').forEach(b=>b.onclick=async()=>{const id=+b.dataset.del;const {error}=await sb.from('bo_recipe_lines').delete().eq('id',id);if(error)return toast(error.message);S.lines=S.lines.filter(x=>x.id!==id);renderRecipe();renderRecipeList()});
-  $('#b-delr').onclick=async()=>{if(!confirm(`Delete the recipe "${r.name}"?`))return;const {error}=await sb.from('bo_recipes').delete().eq('id',r.id);if(error)return toast(error.message);S.recipes=S.recipes.filter(x=>x.id!==r.id);S.lines=S.lines.filter(x=>x.recipe_id!==r.id);S.cur=null;renderRecipeList();renderRecipe()};
-  $('#b-dup').onclick=async()=>{const {data,error}=await sb.from('bo_recipes').insert({company:r.company,name:r.name+' (copy)',category:r.category,yield_qty:r.yield_qty,yield_unit:r.yield_unit,selling_price:r.selling_price,notes:r.notes}).select().single();if(error)return toast(error.message);
-    const ls=lines.map((l,i)=>({recipe_id:data.id,item_id:l.item_id,sub_recipe_id:l.sub_recipe_id,qty:l.qty,unit:l.unit,sort:i}));if(ls.length){const {data:nl}=await sb.from('bo_recipe_lines').insert(ls).select();S.lines.push(...(nl||[]))}
+  $('#b-delr').onclick=async()=>{if(!confirm(`Delete the recipe "${r.name}"?`))return;const {error}=await sb.from('bo_recipes').delete().eq('id',r.id);if(error)return toast(error.message.includes('foreign')?'This recipe is used inside another recipe. Remove it there first.':error.message);S.recipes=S.recipes.filter(x=>x.id!==r.id);S.lines=S.lines.filter(x=>x.recipe_id!==r.id);S.cur=null;renderRecipeList();renderRecipe()};
+  $('#b-dup').onclick=async()=>{const {data,error}=await sb.from('bo_recipes').insert({company:r.company,name:r.name+' (copy)',category:r.category,yield_qty:r.yield_qty,yield_unit:r.yield_unit,selling_price:r.selling_price,notes:r.notes,method:r.method,yield_text:r.yield_text}).select().single();if(error)return toast(error.message);
+    const ls=lines.map((l,i)=>({recipe_id:data.id,item_id:l.item_id,sub_recipe_id:l.sub_recipe_id,qty:l.qty,unit:l.unit,sort:i,label:l.label,section:l.section,as_written:l.as_written,no_cost:l.no_cost}));if(ls.length){const {data:nl}=await sb.from('bo_recipe_lines').insert(ls).select();S.lines.push(...(nl||[]))}
     S.recipes.push(data);S.cur=data.id;renderRecipeList();renderRecipe();toast('Recipe duplicated')};
   setupSearch(r);
 }
 function renderTotals(r){const n=recipeNums(r);const fc=n.per!=null&&n.sellEx?n.per/n.sellEx:null;
-  $('#tot').innerHTML=`<div><span>Recipe cost</span><b>${R(n.total)}</b></div><div><span>Cost per ${esc(r.yield_unit)}</span><b>${n.per!=null?R(n.per):'–'}</b></div><div><span>Selling ex VAT</span><b>${n.sellEx?R(n.sellEx):'–'}</b></div><div><span>Food cost %</span><b>${fc!=null?Math.round(fc*100)+'%':'–'}</b></div><div><span>Gross profit</span><b>${n.gp!=null?Math.round(n.gp*100)+'%':'–'}</b></div>`+(n.issues?`<div style="grid-column:1/-1;background:var(--warn-bg);color:var(--warn)"><span style="color:inherit">${n.issues} ingredient line${n.issues>1?'s':''} can't be costed yet (see ⚠ above).</span></div>`:'')}
+  $('#tot').innerHTML=`<div><span>Recipe cost</span><b>${R(n.total)}</b></div><div><span>Cost per ${esc(r.yield_unit)}</span><b>${n.per!=null?R(n.per):'–'}</b></div><div><span>Selling ex VAT</span><b>${n.sellEx?R(n.sellEx):'–'}</b></div><div><span>Food cost %</span><b>${fc!=null?Math.round(fc*100)+'%':'–'}</b></div><div><span>Gross profit</span><b>${n.gp!=null?Math.round(n.gp*100)+'%':'–'}</b></div>`+(n.issues?`<div style="grid-column:1/-1;background:var(--warn-bg);color:var(--warn)"><span style="color:inherit">${n.issues} ingredient line${n.issues>1?'s':''} can't be costed yet (see ⚠ above). The total leaves them out.</span></div>`:'')}
 function setupSearch(r){
   const inp=$('#addq'),sug=$('#sug');let res=[],sel=0;
   const run=()=>{const q=inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);if(!q.length){sug.classList.add('hide');return}
-    const preps=S.recipes.filter(x=>x.id!==r.id&&x.category==='Prep / sub-recipe'&&q.every(w=>x.name.toLowerCase().includes(w))).map(x=>({t:'r',x}));
+    const recs=S.recipes.filter(x=>x.id!==r.id&&q.every(w=>x.name.toLowerCase().includes(w))).slice(0,8).map(x=>({t:'r',x}));
     const its=S.items.filter(i=>{const h=(i.name+' '+(i.supplier||'')).toLowerCase();return q.every(w=>h.includes(w))});
-    its.sort((a,b)=>((b.businesses||[]).includes(S.co)-(a.businesses||[]).includes(S.co))||a.name.length-b.name.length);
-    res=preps.concat(its.slice(0,30).map(x=>({t:'i',x})));sel=0;draw()};
-  const draw=()=>{sug.innerHTML=res.map((o,k)=>`<div class="${k===sel?'on':''}" data-k="${k}"><span>${o.t==='r'?'↳ ':''}${esc(o.x.name)}</span><small>${o.t==='r'?'Prep recipe':esc((o.x.supplier||'')+' · '+perLabel(o.x))}</small></div>`).join('')||'<div><small>No match. Add the item to the Master Stock first.</small></div>';
+    its.sort((a,b)=>((b.businesses||[]).includes(S.co)-(a.businesses||[]).includes(S.co))||((Number(b.unit_price)>0)-(Number(a.unit_price)>0))||a.name.length-b.name.length);
+    res=recs.concat(its.slice(0,30).map(x=>({t:'i',x})));sel=0;draw()};
+  const draw=()=>{sug.innerHTML=res.map((o,k)=>`<div class="${k===sel?'on':''}" data-k="${k}"><span>${o.t==='r'?'↳ ':''}${esc(o.x.name)}</span><small>${o.t==='r'?'Recipe · '+esc(o.x.category||''):esc((o.x.supplier||'')+' · '+perLabel(o.x))}</small></div>`).join('')||'<div><small>No match. Add the item to the Master Stock first.</small></div>';
     sug.classList.remove('hide');sug.querySelectorAll('[data-k]').forEach(d=>d.onmousedown=e=>{e.preventDefault();pick(res[+d.dataset.k])})};
-  const pick=async o=>{if(!o)return;const f=o.t==='i'?fam(o.x.count_unit):fam(o.x.yield_unit);const unit=f==='w'?'g':f==='v'?'ml':(o.t==='r'&&!['g','kg','ml','L'].includes(o.x.yield_unit)?o.x.yield_unit:'each');
-    const row={recipe_id:r.id,item_id:o.t==='i'?o.x.id:null,sub_recipe_id:o.t==='r'?o.x.id:null,qty:f==='n'?1:100,unit:unit==='portion'?'each':unit,sort:S.lines.filter(l=>l.recipe_id===r.id).length};
+  const pick=async o=>{if(!o)return;
+    if(S.link){const l=S.lines.find(x=>x.id===S.link);const patch={item_id:o.t==='i'?o.x.id:null,sub_recipe_id:o.t==='r'?o.x.id:null};
+      const {error}=await sb.from('bo_recipe_lines').update(patch).eq('id',l.id);if(error)return toast(error.message);Object.assign(l,patch);S.link=null;renderRecipe();renderRecipeList();toast('Linked');return}
+    const f=o.t==='i'?fam(o.x.count_unit):fam(o.x.yield_unit);const unit=f==='w'?'g':f==='v'?'ml':'each';
+    const row={recipe_id:r.id,item_id:o.t==='i'?o.x.id:null,sub_recipe_id:o.t==='r'?o.x.id:null,qty:f==='n'?1:100,unit,sort:Math.max(0,...S.lines.filter(l=>l.recipe_id===r.id).map(l=>l.sort||0))+1};
     const {data,error}=await sb.from('bo_recipe_lines').insert(row).select().single();if(error)return toast(error.message);S.lines.push(data);if(data.item_id)S.uses.set(data.item_id,(S.uses.get(data.item_id)||0)+1);
     renderRecipe();renderRecipeList();const q=$$('.lines tr[data-l] input.q');const last=q[q.length-1];last&&(last.focus(),last.select())};
   inp.addEventListener('input',run);inp.addEventListener('blur',()=>setTimeout(()=>sug.classList.add('hide'),150));
-  inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){sel=Math.min(sel+1,res.length-1);draw();e.preventDefault()}else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);draw();e.preventDefault()}else if(e.key==='Enter'){e.preventDefault();pick(res[sel])}});
+  inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){sel=Math.min(sel+1,res.length-1);draw();e.preventDefault()}else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);draw();e.preventDefault()}else if(e.key==='Enter'){e.preventDefault();pick(res[sel])}else if(e.key==='Escape'&&S.link){S.link=null;renderRecipe()}});
 }
+async function importRecipes(e){const f=e.target.files[0];if(!f)return;const msg=$('#rimp-msg');
+  try{const d=JSON.parse(await f.text());if(!d.recipes||!d.lines)throw new Error('This is not a recipe file');
+    const {data:ex}=await sb.from('bo_recipes').select('name,company');const have=new Set((ex||[]).map(x=>x.company+'|'+x.name.toLowerCase()));
+    const todo=d.recipes.filter(r=>!have.has(r.company+'|'+r.name.toLowerCase()));if(!todo.length)throw new Error('These recipes are already loaded');
+    msg.textContent=`Loading ${todo.length} recipes…`;
+    const ins=await sb.from('bo_recipes').insert(todo.map(({ref,...r})=>r)).select('id');if(ins.error)throw ins.error;
+    const idOf={};todo.forEach((r,i)=>idOf[r.ref]=ins.data[i].id);
+    const all=await (async()=>{let out=[],from=0;for(;;){const {data,error}=await sb.from('bo_items').select('id,name').eq('active',true).range(from,from+999);if(error)throw error;out=out.concat(data);if(data.length<1000)break;from+=1000}return out})();
+    const byName=new Map(all.map(i=>[i.name.toLowerCase(),i.id]));
+    const rows=d.lines.filter(l=>idOf[l.recipe_ref]).map(l=>({recipe_id:idOf[l.recipe_ref],item_id:l.item?byName.get(l.item.toLowerCase())||null:null,sub_recipe_id:l.sub_ref?idOf[l.sub_ref]||null:null,qty:l.qty,unit:l.unit||'each',sort:l.sort,label:l.label,section:l.section||null,as_written:l.as_written||null,no_cost:!!l.no_cost}));
+    for(let i=0;i<rows.length;i+=300){msg.textContent=`Loading ingredients ${i+1} of ${rows.length}…`;const {error}=await sb.from('bo_recipe_lines').insert(rows.slice(i,i+300));if(error)throw error}
+    toast(`Loaded ${todo.length} recipes`);msg.textContent='';await switchCo(S.co);S.tab='recipes'}
+  catch(err){msg.textContent='Could not load: '+err.message}e.target.value=''}
 
 boot();
 })();
