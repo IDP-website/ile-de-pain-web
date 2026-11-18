@@ -245,3 +245,22 @@ label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;
  .mvfoot.sticky .btn{padding:9px 6px;font-size:12.5px}
  .side{gap:2px}
 }
+/* recipe type */
+.kseg{display:flex;background:var(--cream);border-radius:12px;padding:3px;margin-bottom:8px;gap:2px}
+.kseg button{flex:1;border:0;background:none;border-radius:9px;padding:7px 4px;font-weight:700;font-size:12px;cursor:pointer;color:var(--ink-2)}
+.kseg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(43,30,22,.15)}
+.kseg small{font-size:10.5px;color:var(--ink-2);font-weight:600}
+.kt{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:99px;margin-right:3px;vertical-align:1px}
+.kt.menu{background:#E6EEF7;color:#2D5B8A}.kt.batch{background:var(--ok-bg);color:var(--ok)}
+.rkindsel{margin-bottom:16px}.rkindsel>span{display:block;font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:6px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px 12px;cursor:pointer}
+.seg button b{display:block;font-size:13.5px}.seg button small{color:var(--ink-2);font-size:11.5px;line-height:1.35;display:block;margin-top:2px}
+.seg button.on{border-color:var(--co);box-shadow:inset 0 0 0 1px var(--co);background:color-mix(in srgb,var(--co) 7%,#fff)}
+.mvl.mk{grid-template-columns:minmax(0,1fr) 110px 200px 150px 90px 30px}
+.mvl.mk .qty select{width:auto;padding:7px 6px}
+.mvl.mk .out small{display:block;font-size:11px}
+.mvl.edited{background:linear-gradient(90deg,var(--warn-bg),transparent 70%)}
+.mvl .nm .link{font-size:11.5px}
+.tagx{font-style:normal;font-size:10.5px;font-weight:800;background:var(--oat);padding:2px 7px;border-radius:99px;color:var(--ink-2)}
+@media (max-width:760px){.seg{grid-template-columns:1fr}.mvl.mk{grid-template-columns:1fr auto}.mvl.mk .rec::before{content:'Recipe: '}}
