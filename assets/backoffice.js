@@ -178,6 +178,7 @@ async function openItem(id){
   </div>
   ${id?`<div class="sec"><h3>On hand · ${esc(co().name)}</h3><div class="calc"><span>${N(S.cnt.get(id)||0,3)} ${esc(xu(ul(it)))}</span><b>${R((S.cnt.get(id)||0)*(Number(it.unit_price)||0))}</b></div>
     <div id="dr-hist" class="hist"><p class="muted">Loading movements…</p></div><p class="saved">Stock changes through Stock Movements: stock takes, transfers, wastage and manufacturing.</p></div>
+   <div class="sec"><h3>Price history</h3><div id="dr-price" class="hist"><p class="muted">Loading…</p></div></div>
    <div class="sec"><h3>Used in recipes</h3>${used.length?used.map(u=>`<div class="calc" style="margin-bottom:6px"><span>${esc(u.bo_recipes?.name)} <small class="muted">· ${esc(COS.find(c=>c.id===u.bo_recipes?.company)?.name||'')}</small></span><span>${N(u.qty,3)} ${esc(u.unit)}</span></div>`).join(''):'<p class="muted">Not used in any recipe yet.</p>'}</div>`:''}
   <div class="dr-act">${id?'<button type="button" class="btn danger" id="b-del">Remove item</button>':'<span></span>'}<span style="display:flex;gap:8px"><button type="button" class="btn" data-close>Cancel</button><button class="btn fill">Save</button></span></div></form>`;
   $('#dr-panel').classList.remove('wide');$('#drawer').classList.remove('hide');
@@ -185,6 +186,8 @@ async function openItem(id){
     const L=(data||[]).filter(l=>{const m=l.bo_movements;return m&&m.status==='done'&&l.delta!=null&&Number(l.delta)!==0&&(m.company===S.co||m.to_company===S.co)}).slice(0,12);
     const h=$('#dr-hist');if(!h)return;h.innerHTML=L.length?L.map(l=>{const m=l.bo_movements,d=m.company===S.co?Number(l.delta):-Number(l.delta);
       return `<div><span>${fmtD(m.mdate)} · ${esc(TYPES[m.type])}${m.type==='transfer'?(m.company===S.co?' to '+esc(coName(m.to_company)):' from '+esc(coName(m.company))):''} <small class="muted">${esc(m.ref)}</small></span><b class="${d<0?'neg':'pos'}">${d>0?'+':''}${N(d,3)}</b></div>`}).join(''):'<p class="muted">No movements yet.</p>'});
+  if(id)sb.from('bo_price_log').select('*').eq('item_id',id).order('id',{ascending:false}).limit(20).then(({data})=>{const h=$('#dr-price');if(!h)return;
+    h.innerHTML=(data||[]).length?data.map(l=>`<div><span>${new Date(l.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})} · ${esc(l.source||'')}${l.applied?'':' <small class="muted">· lower than current, kept the higher price</small>'}</span><b class="${l.applied?'neg':'muted'}">${l.applied?R(l.old_price)+' → '+R(l.new_price):R(l.invoice_price)}</b></div>`).join(''):'<p class="muted">No price changes logged yet.</p>'});
   const form=$('#f-item');
   form.addEventListener('input',()=>{const d=Object.fromEntries(new FormData(form));$('#dr-per').textContent=perLabel({unit_price:d.unit_price===''?null:+d.unit_price,count_size:+d.count_size||1,count_unit:d.count_unit})});
   form.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form));
