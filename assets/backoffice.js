@@ -242,7 +242,7 @@ function renderRecipe(){
   box.innerHTML=`<div class="rhead">
     <label class="rn">Recipe name<input class="rname" id="r-name" value="${esc(r.name)}"></label>
     <label>Category<input id="r-cat" list="catlist" value="${esc(r.category||'')}"><datalist id="catlist">${cats().map(c=>`<option>${esc(c)}</option>`).join('')}</datalist></label>
-    <label>Makes<span style="display:flex;gap:6px"><input id="r-yq" type="number" step="any" value="${esc(r.yield_qty??1)}" style="width:55%"><select id="r-yu" style="width:45%">${YUNITS.map(u=>`<option ${u===r.yield_unit?'selected':''}>${u}</option>`).join('')}</select></span></label>
+    <label>Yield per batch<span style="display:flex;gap:6px"><input id="r-yq" type="number" step="any" value="${esc(r.yield_qty??1)}" style="width:55%"><select id="r-yu" style="width:45%">${YUNITS.map(u=>`<option ${u===r.yield_unit?'selected':''}>${u}</option>`).join('')}</select></span></label>
     <label>Selling price incl VAT<input id="r-sp" type="number" step="any" placeholder="R" value="${esc(r.selling_price??'')}"></label>
     <label>&nbsp;<span class="saved" id="rsaved">Saves automatically</span></label></div>
    ${r.yield_text||r.needs_check?`<div class="rinfo">${r.yield_text?`<span>Batch as written: <b>${esc(r.yield_text)}</b></span>`:''}${r.needs_check?`<span class="flag">⚑ Needs checking <button class="link" id="b-checked">Mark as checked</button></span>`:''}</div>`:''}
@@ -335,7 +335,7 @@ async function loadMoves(){const {data,error}=await sb.from('bo_movements').sele
 const mvValue=m=>m.total_value==null?'':R(Math.abs(m.total_value));
 function mvDetail(m){
   if(m.type==='transfer')return m.company===S.co?`<span class="dir out">→</span> To ${esc(coName(m.to_company))}`:`<span class="dir in">←</span> From ${esc(coName(m.company))}`;
-  if(m.type==='manufacture')return `${esc(getRec(m.recipe_id)?.name||'Recipe')} · ${N(m.batches)} batch${m.batches==1?'':'es'} → ${N(m.yield_qty)} ${esc(m.yield_unit||'')}`;
+  if(m.type==='manufacture')return `${esc(getRec(m.recipe_id)?.name||'Recipe')} · ${N(m.batches)} batch${m.batches==1?'':'es'} · yield ${N(m.yield_qty)} ${esc(m.yield_unit||'')}`;
   if(m.type==='stocktake')return m.status==='draft'?'<b class="warnt">In progress · tap to carry on counting</b>':`Variance ${m.total_value<0?'−':'+'}${R(Math.abs(m.total_value||0))}`;
   return esc(m.notes||'')}
 function renderMoves(){
@@ -363,7 +363,7 @@ function linesTable(m,lines){
     return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Counted</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">Value</th></tr></thead><tbody>${rows.map(o=>`<tr><td><b>${esc(lname(o.l))}</b><small>${esc(o.l.unit||'')}${o.areas.length?' · '+esc([...new Set(o.areas)].join(', ')):''}</small></td><td class="r">${N(o.c,3)}</td><td class="r">${o.e==null?'–':N(o.e,3)}</td><td class="r ${o.d<0?'neg':o.d>0?'pos':''}">${o.d==null?'–':(o.d>0?'+':'')+N(o.d,3)}</td><td class="r ${o.v<0?'neg':''}">${o.v?R(o.v):''}</td></tr>`).join('')}${tot(rows.reduce((a,o)=>a+o.v,0),4)}</tbody></table>`}
   if(m.type==='manufacture'){const used=lines.filter(l=>l.delta<0),made=lines.filter(l=>l.delta>0);
     const t=(L,h)=>`<tr class="sub"><td colspan="4">${h}</td></tr>`+L.map(l=>`<tr><td><b>${esc(lname(l))}</b><small>${esc(l.reason||'')}</small></td><td class="r">${N(l.qty,3)}</td><td>${esc(l.unit||'')}</td><td class="r">${R(l.value)}</td></tr>`).join('');
-    return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Value</th></tr></thead><tbody>${t(used,'Taken out of stock')}${t(made,'Made and added to stock')}<tr class="tot"><td colspan="3">Batch cost</td><td class="r">${R(m.total_value)}</td></tr></tbody></table>`}
+    return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Value</th></tr></thead><tbody>${t(used,'Taken out of stock')}${t(made,'Yield added to stock')}<tr class="tot"><td colspan="3">Batch cost</td><td class="r">${R(m.total_value)}</td></tr></tbody></table>`}
   const rs=m.type==='wastage';const op=m.type==='opening';
   return `<table class="mvt"><thead><tr><th>Item</th>${op?'<th>Area</th>':''}<th class="r">Qty</th><th>Unit</th><th class="r">Unit cost</th><th class="r">Value</th>${rs?'<th>Reason</th>':''}</tr></thead><tbody>${lines.map(l=>`<tr><td><b>${esc(lname(l))}</b></td>${op?`<td>${esc(l.area||'')}</td>`:''}<td class="r">${N(l.qty,3)}</td><td>${esc(l.unit||'')}</td><td class="r">${R(l.unit_cost)}</td><td class="r">${R(l.value)}</td>${rs?`<td>${esc(l.reason||'')}</td>`:''}</tr>`).join('')}${`<tr class="tot"><td colspan="${op?5:4}">Total</td><td class="r">${R(lines.reduce((a,l)=>a+Number(l.value||0),0))}</td>${rs?'<td></td>':''}</tr>`}</tbody></table>`}
 function metaHtml(m){return `<div class="mvmeta"><div><span>Date</span><b>${fmtD(m.mdate)}</b></div>${m.type==='transfer'?`<div><span>From</span><b>${esc(coName(m.company))}</b></div><div><span>To</span><b>${esc(coName(m.to_company))}</b></div>`:`<div><span>Business</span><b>${esc(coName(m.company))}</b></div>`}<div><span>Captured by</span><b>${esc(whoIs(m.created_by))}</b></div>${m.notes?`<div class="full"><span>Notes</span><b>${esc(m.notes)}</b></div>`:''}</div>`}
@@ -377,7 +377,7 @@ async function openMove(id){const m=S.moves.find(x=>x.id===id)||(await sb.from('
     const {error}=await sb.rpc('bo_cancel_movement',{mid:m.id});if(error)return toast(error.message);closeDrawer();toast(m.ref+' cancelled');await refreshStock()})}
 function printMove(m,lines){
   $('#print').innerHTML=`<div class="pd-h"><img src="/assets/img/logo-orange.png" alt=""><div class="r"><h1>${TYPES[m.type]}</h1><b>${esc(m.ref)}</b></div></div>
-   ${m.type==='manufacture'?`<p class="pd-sub">${esc(getRec(m.recipe_id)?.name||'')} · ${N(m.batches)} batch${m.batches==1?'':'es'} · made ${N(m.yield_qty)} ${esc(m.yield_unit||'')}</p>`:''}${metaHtml(m)}${linesTable(m,lines)}
+   ${m.type==='manufacture'?`<p class="pd-sub">${esc(getRec(m.recipe_id)?.name||'')} · ${N(m.batches)} batch${m.batches==1?'':'es'} · yield ${N(m.yield_qty)} ${esc(m.yield_unit||'')}</p>`:''}${metaHtml(m)}${linesTable(m,lines)}
    ${m.type==='transfer'?`<div class="sign"><div><span>Sent by (${esc(coName(m.company))})</span><i></i><small>Name, signature and date</small></div><div><span>Received by (${esc(coName(m.to_company))})</span><i></i><small>Name, signature and date</small></div></div>`:m.type==='stocktake'?`<div class="sign"><div><span>Counted by</span><i></i><small>Name and signature</small></div><div><span>Checked by</span><i></i><small>Name and signature</small></div></div>`:''}
    <p class="pd-foot">Printed ${new Date().toLocaleString('en-GB')} · île de païn Back Office</p>`;
   window.print()}
@@ -446,24 +446,24 @@ function makePlan(){const E=S.ed,r=getRec(E.rid);if(!r)return null;const b=E.bat
 function drawMake(){const P=makePlan();const box=$('#mk-body');
   if(!P){box.innerHTML='<div class="empty sm">Choose a recipe to see what it uses.</div>';return}
   const {r,use,skip,cost,exp,act}=P;const per=act>0?cost/act:null;
-  box.innerHTML=`<div class="mkyield"><div><span>Recipe makes</span><b>${N(r.yield_qty)} ${esc(r.yield_unit)} per batch</b><small>Expected: ${N(exp)} ${esc(r.yield_unit)}</small></div>
-    <label>Actually made<span class="qty"><input id="mk-a" type="number" step="any" min="0" inputmode="decimal" value="${N(act,3).replace(/,/g,'')}"><small>${esc(r.yield_unit)}</small></span></label>
-    <div><span>Cost per ${esc(r.yield_unit)}</span><b>${per!=null?R(per):'–'}</b>${act!==exp&&exp?`<small class="${act<exp?'neg':''}">${act<exp?'Lost ':'Extra '}${N(Math.abs(exp-act),3)} vs recipe</small>`:''}</div>
+  box.innerHTML=`<div class="mkyield"><div><span>Recipe yield</span><b>${N(r.yield_qty)} ${esc(r.yield_unit)} per batch</b><small>Expected yield: ${N(exp)} ${esc(r.yield_unit)}</small></div>
+    <label>Actual yield<span class="qty"><input id="mk-a" type="number" step="any" min="0" inputmode="decimal" value="${N(act,3).replace(/,/g,'')}"><small>${esc(r.yield_unit)}</small></span></label>
+    <div><span>Cost per ${esc(r.yield_unit)}</span><b>${per!=null?R(per):'–'}</b>${act!==exp&&exp?`<small class="${act<exp?'neg':''}">Yield variance: ${act<exp?'−':'+'}${N(Math.abs(exp-act),3)} ${esc(r.yield_unit)}</small>`:''}</div>
     <div><span>Batch cost</span><b>${R(cost)}</b><small>In stock now: ${N(S.made.get(r.id)||0,3)} ${esc(r.yield_unit)}</small></div></div>
-   ${['portion','each'].includes(r.yield_unit)?'':`<p class="hint">Tip: to stock this as slices or portions, set the recipe's <b>Makes</b> to e.g. 12 portion.</p>`}
+   ${['portion','each'].includes(r.yield_unit)?'':`<p class="hint">Tip: to stock this as slices or portions, set the recipe's <b>Yield</b> to e.g. 12 portion.</p>`}
    <div class="mvlines"><div class="mvl hd mk"><span>Ingredient</span><span class="r">Per batch</span><span class="r">Out of stock</span><span class="r">On hand after</span><span class="r">Cost</span></div>
-   ${use.map(u=>`<div class="mvl mk"><span class="nm"><b>${u.kind==='r'?'↳ ':''}${esc(u.name)}</b></span><span class="r muted">${esc(u.per)}</span><span class="r">${N(u.qty,3)} ${esc(xu(u.unit))}</span><span class="r ${u.on-u.qty<0?'neg':'muted'}">${N(u.on-u.qty,3)}</span><span class="r">${R(u.value)}</span></div>`).join('')}</div>
+   ${use.map(u=>`<div class="mvl mk"><span class="nm"><b>${u.kind==='r'?'↳ ':''}${esc(u.name)}</b></span><span class="r muted">${esc(u.per)}</span><span class="r">${N(u.qty,3)} ${esc(xu(u.unit))}</span><span class="r ${u.on-u.qty<-0.0005?'neg':'muted'}">${N(u.on-u.qty,3)}</span><span class="r">${R(u.value)}</span></div>`).join('')}</div>
    ${skip.length?`<div class="skip"><b>${skip.length} ingredient${skip.length>1?'s':''} won't come out of stock</b>${skip.map(s=>`<div>${esc(s[0])} <small>· ${esc(s[1])}</small></div>`).join('')}<small>Fix these in the recipe and they'll be included next time.</small></div>`:''}
    <label style="margin-top:14px">Notes<input id="mk-n" value="${esc(S.ed.notes)}" placeholder="Optional"></label>
-   <div class="mvfoot"><span>${N(act,3)} ${esc(r.yield_unit)} into stock · <b>${R(cost)}</b></span><span class="mvbtns"><button class="btn" id="mk-x">Cancel</button><button class="btn fill" id="mk-post">Post manufacturing</button></span></div>`;
+   <div class="mvfoot"><span>Yield: ${N(act,3)} ${esc(r.yield_unit)} into stock · <b>${R(cost)}</b></span><span class="mvbtns"><button class="btn" id="mk-x">Cancel</button><button class="btn fill" id="mk-post">Post manufacturing</button></span></div>`;
   $('#mk-a').addEventListener('change',e=>{S.ed.actual=e.target.value===''?0:+e.target.value;drawMake()});$('#mk-n').oninput=e=>S.ed.notes=e.target.value;
   $('#mk-x').onclick=()=>$('#mv-back').click();$('#mk-post').onclick=postMake}
-async function postMake(){const P=makePlan();if(!P)return;const {r,use,cost,act}=P;if(!(S.ed.batches>0))return toast('Enter how many batches');if(!(act>0))return toast('Enter how much was made');
+async function postMake(){const P=makePlan();if(!P)return;const {r,use,cost,act}=P;if(!(S.ed.batches>0))return toast('Enter how many batches');if(!(act>0))return toast('Enter the actual yield');
   const lines=use.map(u=>({item_id:u.kind==='i'?u.id:null,recipe_id:u.kind==='r'?u.id:null,name:u.name,qty:u.qty,unit:u.unit,delta:-u.qty,unit_cost:u.cost,value:u.value,reason:'Per batch: '+u.per}));
-  lines.push({recipe_id:r.id,name:r.name,qty:act,unit:r.yield_unit,delta:act,unit_cost:cost/act,value:cost,reason:'Made'});
+  lines.push({recipe_id:r.id,name:r.name,qty:act,unit:r.yield_unit,delta:act,unit_cost:cost/act,value:cost,reason:'Yield'});
   $('#mk-post').disabled=true;const {data:id,error}=await sb.rpc('bo_post_movement',{p:{movement:{type:'manufacture',company:S.co,mdate:S.ed.date,recipe_id:r.id,batches:S.ed.batches,yield_qty:act,yield_unit:r.yield_unit,notes:S.ed.notes||null,total_value:cost},lines}});
   if(error){$('#mk-post').disabled=false;return toast('Not posted: '+error.message)}
-  toast(`${N(act,3)} ${r.yield_unit} of ${r.name} added to stock`);S.ed=null;await refreshStock();backToList();openMove(id)}
+  toast(`Yield of ${N(act,3)} ${r.yield_unit} ${r.name} added to stock`);S.ed=null;await refreshStock();backToList();openMove(id)}
 
 // stock take
 const MADE='Made items',OTHER='Other';
