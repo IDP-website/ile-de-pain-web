@@ -10,7 +10,8 @@ const LUNITS=['g','kg','ml','L','each','tsp','tbsp','cup','pinch','dash','bunch'
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const R=n=>n==null||isNaN(n)?'–':'R'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-const N=(n,d=2)=>n==null||isNaN(n)?'':Number(n).toLocaleString('en-US',{maximumFractionDigits:d});
+const N=(n,d=2)=>n==null||isNaN(n)?'':Number(n).toLocaleString('en-US',{maximumFractionDigits:d}).replace(/^-0(\.0+)?$/,'0');
+const xu=u=>/^\d/.test(String(u||''))?'× '+u:String(u||'');
 const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.remove('hide');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hide'),2200)};
 const deb=(f,ms=500)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>f(...a),ms)}};
 
@@ -60,7 +61,10 @@ async function load(){
   const [items,counts,recipes]=await Promise.all([all('bo_items','*',q=>q.eq('active',true).order('name')),all('bo_counts','*',q=>q.eq('company',S.co).eq('period',PERIOD)),all('bo_recipes','*',q=>q.eq('company',S.co).order('name'))]);
   S.items=items;S.byId=new Map(items.map(i=>[i.id,i]));S.counts=counts;S.recipes=recipes;
   S.lines=recipes.length?await all('bo_recipe_lines','*',q=>q.in('recipe_id',recipes.map(r=>r.id)).order('sort')):[];
-  S.cnt=new Map();for(const c of counts)S.cnt.set(c.item_id,(S.cnt.get(c.item_id)||0)+Number(c.count||0));
+  const oh=await all('bo_on_hand','*',q=>q.eq('company',S.co));
+  S.cnt=new Map();S.made=new Map();for(const o of oh){if(o.item_id)S.cnt.set(o.item_id,Number(o.qty));else if(o.recipe_id)S.made.set(o.recipe_id,Number(o.qty))}
+  S.recById=new Map(recipes.map(r=>[r.id,r]));const miss=[...S.made.keys()].filter(id=>!S.recById.has(id));
+  if(miss.length){const {data}=await sb.from('bo_recipes').select('*').in('id',miss);(data||[]).forEach(r=>S.recById.set(r.id,r))}
   S.uses=new Map();for(const l of S.lines)if(l.item_id)S.uses.set(l.item_id,(S.uses.get(l.item_id)||0)+1);
 }
 
@@ -88,13 +92,16 @@ function renderCompanies(){
 }
 async function switchCo(id){
   S.co=id;localStorage.setItem('bo-co',id);document.documentElement.style.setProperty('--co',co().color);
-  renderCompanies();$('#co-name').textContent=$('#co-name2').textContent=co().name;
+  renderCompanies();$('#co-name').textContent=$('#co-name2').textContent=$('#co-name3').textContent=co().name;
   $('#t-stock tbody').innerHTML='<tr><td colspan="9" class="muted">Loading…</td></tr>';
   try{await load()}catch(e){toast('Could not load: '+e.message);return}
-  S.cur=null;$('#seed').classList.toggle('hide',S.items.length>0);fillFilters();renderStock();renderRecipeList();renderRecipe();
+  try{await loadMoves()}catch(e){S.moves=[];toast('Could not load movements: '+e.message)}
+  S.cur=null;$('#seed').classList.toggle('hide',S.items.length>0);fillFilters();renderStock();renderRecipeList();renderRecipe();if(S.tab==='moves'||!$('#v-mv').classList.contains('hide'))showTab('moves');
 }
-$$('#tabs button[data-tab]').forEach(b=>b.onclick=()=>{if(b.disabled)return;S.tab=b.dataset.tab;$$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
-  $('#v-stock').classList.toggle('hide',S.tab!=='stock');$('#v-recipes').classList.toggle('hide',S.tab!=='recipes');if(S.tab==='recipes')renderRecipeList()});
+function showTab(t){S.tab=t;$$('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));S.ed=null;S.tk=null;
+  $('#v-stock').classList.toggle('hide',t!=='stock');$('#v-recipes').classList.toggle('hide',t!=='recipes');$('#v-moves').classList.toggle('hide',t!=='moves');$('#v-mv').classList.add('hide');
+  if(t==='recipes')renderRecipeList();if(t==='moves')renderMoves();if(t==='stock')renderStock()}
+$$('#tabs button[data-tab]').forEach(b=>b.onclick=()=>{if(S.ed&&S.ed.dirty&&!confirm('Leave without posting? What you captured will be lost.'))return;showTab(b.dataset.tab)});
 
 // ---------- one-time starting data ----------
 $('#seed-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const msg=$('#seed-msg');
@@ -121,7 +128,7 @@ function filtered(){
   let L=S.items.filter(i=>{
     if(sup&&i.supplier!==sup)return false;if(dep&&i.department!==dep)return false;
     if(mine&&!(i.businesses||[]).includes(S.co)&&!S.cnt.has(i.id)&&!S.uses.has(i.id))return false;
-    if(cnt&&!S.cnt.has(i.id))return false;if(rev&&!review(i))return false;
+    if(cnt&&!(S.cnt.get(i.id)>0))return false;if(rev&&!review(i))return false;
     if(q.length){const h=[i.name,i.supplier,i.category,i.sub_category,i.department,i.location].join(' ').toLowerCase();if(!q.every(w=>h.includes(w)))return false}
     return true});
   const [k,dir]=S.sort;const v=i=>k==='count'?(S.cnt.get(i.id)??-1):k==='value'?((S.cnt.get(i.id)||0)*(i.unit_price||0)):k==='unit_price'?Number(i.unit_price??-1):String(i[k]??'').toLowerCase();
@@ -129,9 +136,9 @@ function filtered(){
 }
 function renderStock(){
   const L=filtered();const shown=L.slice(0,400);
-  let val=0,counted=0;for(const [id,c] of S.cnt){const it=S.byId.get(id);if(it){val+=c*(Number(it.unit_price)||0);counted++}}
+  let val=0,counted=0;for(const [id,c] of S.cnt){const it=S.byId.get(id);if(it&&c>0){val+=c*(Number(it.unit_price)||0);counted++}}
   const mineAll=S.items.filter(i=>(i.businesses||[]).includes(S.co)||S.cnt.has(i.id));
-  $('#kpis').innerHTML=`<div class="kpi"><span>Items for ${esc(co().name)}</span><b>${N(mineAll.length,0)}</b></div><div class="kpi"><span>Stock value · Oct 2026 count</span><b>${R(val)}</b></div><div class="kpi"><span>Items counted</span><b>${N(counted,0)}</b></div><div class="kpi warn"><span>Need review (new or no price)</span><b>${N(mineAll.filter(review).length,0)}</b></div>`;
+  $('#kpis').innerHTML=`<div class="kpi"><span>Items for ${esc(co().name)}</span><b>${N(mineAll.length,0)}</b></div><div class="kpi"><span>Stock value · on hand now</span><b>${R(val)}</b></div><div class="kpi"><span>Items in stock</span><b>${N(counted,0)}</b></div><div class="kpi warn"><span>Need review (new or no price)</span><b>${N(mineAll.filter(review).length,0)}</b></div>`;
   $('#t-stock tbody').innerHTML=shown.map(i=>{const c=S.cnt.get(i.id),u=S.uses.get(i.id);
     return `<tr data-id="${i.id}"><td class="name">${esc(i.name)}${i.added_from?'<span class="tag">new</span>':''}<small>${esc([i.department,i.location].filter(Boolean).join(' · '))}</small></td>
     <td class="muted">${esc(i.supplier||'')}</td><td class="muted">${esc(i.category||'')}</td><td class="muted">${N(i.count_size,3)} ${esc(i.count_unit)}</td>
@@ -142,7 +149,7 @@ function renderStock(){
 }
 ['#q','#f-sup','#f-dep','#f-mine','#f-counted','#f-review'].forEach(s=>$(s).addEventListener(s==='#q'?'input':'change',deb(renderStock,s==='#q'?150:0)));
 $$('#t-stock th[data-s]').forEach(th=>th.onclick=()=>{const k=th.dataset.s;S.sort=[k,S.sort[0]===k?-S.sort[1]:1];renderStock()});
-$('#b-export').onclick=()=>{const L=filtered();const rows=[['Item','Supplier','Department','Category','Count size','Count unit','Price ex VAT','Count','Value']].concat(L.map(i=>{const c=S.cnt.get(i.id);return[i.name,i.supplier,i.department,i.category,i.count_size,i.count_unit,i.unit_price,c??'',c!=null&&i.unit_price?(c*i.unit_price).toFixed(2):'']}));
+$('#b-export').onclick=()=>{const L=filtered();const rows=[['Item','Supplier','Department','Category','Count size','Count unit','Price ex VAT','On hand','Value']].concat(L.map(i=>{const c=S.cnt.get(i.id);return[i.name,i.supplier,i.department,i.category,i.count_size,i.count_unit,i.unit_price,c??'',c!=null&&i.unit_price?(c*i.unit_price).toFixed(2):'']}));
   const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`master-stock-${S.co}.csv`;a.click()};
 $('#b-add').onclick=()=>openItem(null);
 
@@ -169,11 +176,15 @@ async function openItem(id){
    <label class="full">Notes<textarea name="notes" rows="2">${esc(it.notes||'')}</textarea></label>
    ${it.added_from?`<div class="full calc"><span>Added from</span><span>${esc(it.added_from)} <label style="display:inline-flex;flex-direction:row;gap:5px;margin-left:8px"><input type="checkbox" name="reviewed"> Mark as checked</label></span></div>`:''}
   </div>
-  ${id?`<div class="sec"><h3>Stock count · ${esc(co().name)} · October 2026</h3><table class="mini">${counts.map(c=>`<tr><td>${esc(c.area)}</td><td class="r"><input data-cid="${c.id}" type="number" step="any" value="${c.count}"></td></tr>`).join('')||'<tr><td class="muted">Not counted at this business yet.</td></tr>'}
-    <tr><td><input id="new-area" placeholder="Area, e.g. Kitchen" style="width:100%"></td><td class="r"><input id="new-cnt" type="number" step="any" placeholder="Count"></td></tr></table></div>
+  ${id?`<div class="sec"><h3>On hand · ${esc(co().name)}</h3><div class="calc"><span>${N(S.cnt.get(id)||0,3)} ${esc(xu(ul(it)))}</span><b>${R((S.cnt.get(id)||0)*(Number(it.unit_price)||0))}</b></div>
+    <div id="dr-hist" class="hist"><p class="muted">Loading movements…</p></div><p class="saved">Stock changes through Stock Movements: stock takes, transfers, wastage and manufacturing.</p></div>
    <div class="sec"><h3>Used in recipes</h3>${used.length?used.map(u=>`<div class="calc" style="margin-bottom:6px"><span>${esc(u.bo_recipes?.name)} <small class="muted">· ${esc(COS.find(c=>c.id===u.bo_recipes?.company)?.name||'')}</small></span><span>${N(u.qty,3)} ${esc(u.unit)}</span></div>`).join(''):'<p class="muted">Not used in any recipe yet.</p>'}</div>`:''}
   <div class="dr-act">${id?'<button type="button" class="btn danger" id="b-del">Remove item</button>':'<span></span>'}<span style="display:flex;gap:8px"><button type="button" class="btn" data-close>Cancel</button><button class="btn fill">Save</button></span></div></form>`;
-  $('#drawer').classList.remove('hide');
+  $('#dr-panel').classList.remove('wide');$('#drawer').classList.remove('hide');
+  if(id)sb.from('bo_movement_lines').select('qty,delta,counted,area,bo_movements(ref,type,mdate,company,to_company,status)').eq('item_id',id).order('id',{ascending:false}).limit(60).then(({data})=>{
+    const L=(data||[]).filter(l=>{const m=l.bo_movements;return m&&m.status==='done'&&l.delta!=null&&Number(l.delta)!==0&&(m.company===S.co||m.to_company===S.co)}).slice(0,12);
+    const h=$('#dr-hist');if(!h)return;h.innerHTML=L.length?L.map(l=>{const m=l.bo_movements,d=m.company===S.co?Number(l.delta):-Number(l.delta);
+      return `<div><span>${fmtD(m.mdate)} · ${esc(TYPES[m.type])}${m.type==='transfer'?(m.company===S.co?' to '+esc(coName(m.to_company)):' from '+esc(coName(m.company))):''} <small class="muted">${esc(m.ref)}</small></span><b class="${d<0?'neg':'pos'}">${d>0?'+':''}${N(d,3)}</b></div>`}).join(''):'<p class="muted">No movements yet.</p>'});
   const form=$('#f-item');
   form.addEventListener('input',()=>{const d=Object.fromEntries(new FormData(form));$('#dr-per').textContent=perLabel({unit_price:d.unit_price===''?null:+d.unit_price,count_size:+d.count_size||1,count_unit:d.count_unit})});
   form.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form));
@@ -241,8 +252,9 @@ function renderRecipe(){
    <label style="margin-top:16px">Method<textarea id="r-method" rows="${Math.min(14,Math.max(3,(r.method||'').split('\n').length+1))}">${esc(r.method||'')}</textarea></label>
    <label style="margin-top:10px">Notes<textarea id="r-notes" rows="2">${esc(r.notes||'')}</textarea></label>
    ${r.source?`<p class="saved" style="margin-top:8px">Source: ${esc(r.source)}</p>`:''}
-   <div class="dr-act"><button class="btn danger" id="b-delr">Delete recipe</button><button class="btn" id="b-dup">Duplicate</button></div>`;
+   <div class="dr-act"><button class="btn danger" id="b-delr">Delete recipe</button><span style="display:flex;gap:8px"><button class="btn" id="b-dup">Duplicate</button><button class="btn fill" id="b-make">Manufacture a batch</button></span></div>`;
   renderTotals(r);
+  $('#b-make').onclick=()=>{showTab('moves');openMake(r.id)};
   const upd=()=>{r.name=$('#r-name').value;r.category=$('#r-cat').value.trim()||null;r.yield_qty=+$('#r-yq').value||1;r.yield_unit=$('#r-yu').value;r.selling_price=$('#r-sp').value===''?null:+$('#r-sp').value;r.notes=$('#r-notes').value;r.method=$('#r-method').value;
     $('#rsaved').textContent='Saving…';renderTotals(r);saveRecipe(r)};
   ['#r-name','#r-yq','#r-sp','#r-notes','#r-method','#r-cat'].forEach(x=>$(x).addEventListener('input',upd));$('#r-yu').addEventListener('change',upd);
@@ -259,7 +271,7 @@ function renderRecipe(){
   setupSearch(r);
 }
 function renderTotals(r){const n=recipeNums(r);const fc=n.per!=null&&n.sellEx?n.per/n.sellEx:null;
-  $('#tot').innerHTML=`<div><span>Recipe cost</span><b>${R(n.total)}</b></div><div><span>Cost per ${esc(r.yield_unit)}</span><b>${n.per!=null?R(n.per):'–'}</b></div><div><span>Selling ex VAT</span><b>${n.sellEx?R(n.sellEx):'–'}</b></div><div><span>Food cost %</span><b>${fc!=null?Math.round(fc*100)+'%':'–'}</b></div><div><span>Gross profit</span><b>${n.gp!=null?Math.round(n.gp*100)+'%':'–'}</b></div>`+(n.issues?`<div style="grid-column:1/-1;background:var(--warn-bg);color:var(--warn)"><span style="color:inherit">${n.issues} ingredient line${n.issues>1?'s':''} can't be costed yet (see ⚠ above). The total leaves them out.</span></div>`:'')}
+  $('#tot').innerHTML=`<div><span>Recipe cost</span><b>${R(n.total)}</b></div><div><span>Cost per ${esc(r.yield_unit)}</span><b>${n.per!=null?R(n.per):'–'}</b></div><div><span>Selling ex VAT</span><b>${n.sellEx?R(n.sellEx):'–'}</b></div><div><span>Food cost %</span><b>${fc!=null?Math.round(fc*100)+'%':'–'}</b></div><div><span>Gross profit</span><b>${n.gp!=null?Math.round(n.gp*100)+'%':'–'}</b></div><div><span>In stock (made)</span><b>${N(S.made?.get(r.id)||0,3)} <small style="font-size:12px">${esc(r.yield_unit)}</small></b></div>`+(n.issues?`<div style="grid-column:1/-1;background:var(--warn-bg);color:var(--warn)"><span style="color:inherit">${n.issues} ingredient line${n.issues>1?'s':''} can't be costed yet (see ⚠ above). The total leaves them out.</span></div>`:'')}
 function setupSearch(r){
   const inp=$('#addq'),sug=$('#sug');let res=[],sel=0;
   const run=()=>{const q=inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);if(!q.length){sug.classList.add('hide');return}
@@ -292,6 +304,230 @@ async function importRecipes(e){const f=e.target.files[0];if(!f)return;const msg
     for(let i=0;i<rows.length;i+=300){msg.textContent=`Loading ingredients ${i+1} of ${rows.length}…`;const {error}=await sb.from('bo_recipe_lines').insert(rows.slice(i,i+300));if(error)throw error}
     toast(`Loaded ${todo.length} recipes`);msg.textContent='';await switchCo(S.co);S.tab='recipes'}
   catch(err){msg.textContent='Could not load: '+err.message}e.target.value=''}
+
+// ---------- stock movements ----------
+const TYPES={opening:'Opening stock',stocktake:'Stock take',transfer:'Branch transfer',wastage:'Wastage',manufacture:'Manufacturing'};
+const REASONS=['Expired','Spoiled / gone off','Damaged','Dropped or spilled','Over-production','Quality / returned','Staff meal','Tasting / samples','Other'];
+const coName=id=>COS.find(c=>c.id===id)?.name||id||'';
+const ul=it=>!it?'':Number(it.count_size||1)===1?it.count_unit:`${N(it.count_size,3)} ${it.count_unit}`;
+const getRec=id=>S.recById?.get(id)||S.recipes.find(r=>r.id===id);
+const rUnit=r=>r&&r.yield_qty?recipeCost(r).total/r.yield_qty:0;
+const today=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+const fmtD=d=>d?new Date(d+'T00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+const whoIs=e=>e==='system'?'System':(Object.keys(USERS).find(k=>USERS[k]===e)||e||'').replace(/^./,c=>c.toUpperCase());
+function thing(kind,id){
+  if(kind==='i'){const it=S.byId.get(id);if(!it)return null;return{kind,id,name:it.name,unit:ul(it),cost:Number(it.unit_price)||0,on:S.cnt.get(id)||0,sub:[it.supplier,it.department].filter(Boolean).join(' · ')}}
+  const r=getRec(id);if(!r)return null;return{kind,id,name:r.name,unit:r.yield_unit,cost:rUnit(r),on:S.made.get(id)||0,sub:'Made here · '+(r.category||'')}}
+function findThings(q,made=true){const w=q.trim().toLowerCase().split(/\s+/).filter(Boolean);if(!w.length)return[];
+  const its=S.items.filter(i=>{const h=(i.name+' '+(i.supplier||'')).toLowerCase();return w.every(x=>h.includes(x))});
+  its.sort((a,b)=>((S.cnt.get(b.id)>0)-(S.cnt.get(a.id)>0))||((b.businesses||[]).includes(S.co)-(a.businesses||[]).includes(S.co))||a.name.length-b.name.length);
+  const recs=made?[...S.recById.values()].filter(r=>(r.company===S.co||S.made.has(r.id))&&w.every(x=>r.name.toLowerCase().includes(x))).slice(0,8):[];
+  return recs.map(r=>thing('r',r.id)).concat(its.slice(0,25).map(i=>thing('i',i.id)))}
+function picker(inp,sug,onPick,made=true){let res=[],sel=0;
+  const draw=()=>{sug.innerHTML=res.map((o,k)=>`<div class="${k===sel?'on':''}" data-k="${k}"><span>${o.kind==='r'?'↳ ':''}${esc(o.name)}</span><small>${esc(o.sub)} · on hand ${N(o.on,3)} ${esc(xu(o.unit))}</small></div>`).join('')||'<div><small>No match</small></div>';
+    sug.classList.remove('hide');sug.querySelectorAll('[data-k]').forEach(d=>d.onmousedown=e=>{e.preventDefault();go(res[+d.dataset.k])})};
+  const go=o=>{if(!o)return;inp.value='';sug.classList.add('hide');onPick(o)};
+  inp.addEventListener('input',()=>{res=findThings(inp.value,made);sel=0;inp.value.trim()?draw():sug.classList.add('hide')});
+  inp.addEventListener('blur',()=>setTimeout(()=>sug.classList.add('hide'),150));
+  inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){sel=Math.min(sel+1,res.length-1);draw();e.preventDefault()}else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);draw();e.preventDefault()}else if(e.key==='Enter'){e.preventDefault();go(res[sel])}})}
+
+async function loadMoves(){const {data,error}=await sb.from('bo_movements').select('*').or(`company.eq.${S.co},to_company.eq.${S.co}`).order('mdate',{ascending:false}).order('id',{ascending:false}).limit(600);if(error)throw error;S.moves=data||[]}
+const mvValue=m=>m.total_value==null?'':R(Math.abs(m.total_value));
+function mvDetail(m){
+  if(m.type==='transfer')return m.company===S.co?`<span class="dir out">→</span> To ${esc(coName(m.to_company))}`:`<span class="dir in">←</span> From ${esc(coName(m.company))}`;
+  if(m.type==='manufacture')return `${esc(getRec(m.recipe_id)?.name||'Recipe')} · ${N(m.batches)} batch${m.batches==1?'':'es'} → ${N(m.yield_qty)} ${esc(m.yield_unit||'')}`;
+  if(m.type==='stocktake')return m.status==='draft'?'<b class="warnt">In progress · tap to carry on counting</b>':`Variance ${m.total_value<0?'−':'+'}${R(Math.abs(m.total_value||0))}`;
+  return esc(m.notes||'')}
+function renderMoves(){
+  const q=(S.mq||'').toLowerCase();
+  const L=(S.moves||[]).filter(m=>(!S.mtype||m.type===S.mtype)&&(!q||[m.ref,m.notes,TYPES[m.type],coName(m.to_company),coName(m.company),getRec(m.recipe_id)?.name].join(' ').toLowerCase().includes(q)));
+  let iv=0;for(const [id,c] of S.cnt){const it=S.byId.get(id);if(it&&c>0)iv+=c*(Number(it.unit_price)||0)}
+  let mv=0;for(const [id,c] of S.made)if(c>0)mv+=c*rUnit(getRec(id));
+  const mon=today().slice(0,7);const waste=(S.moves||[]).filter(m=>m.type==='wastage'&&m.status==='done'&&m.company===S.co&&String(m.mdate).startsWith(mon)).reduce((a,m)=>a+Math.abs(Number(m.total_value)||0),0);
+  const lt=(S.moves||[]).find(m=>m.type==='stocktake'&&m.status==='done'&&m.company===S.co);
+  $('#mkpis').innerHTML=`<div class="kpi"><span>Stock on hand now</span><b>${R(iv)}</b></div><div class="kpi"><span>Made items on hand</span><b>${R(mv)}</b></div><div class="kpi ${waste?'warn':''}"><span>Wastage this month</span><b>${R(waste)}</b></div><div class="kpi"><span>Last stock take</span><b>${lt?fmtD(lt.mdate):'None yet'}</b></div>`;
+  $('#mtypes').innerHTML=[['','All'],...Object.entries(TYPES)].map(([k,v])=>`<button class="${(S.mtype||'')===k?'on':''}" data-t="${k}">${v}</button>`).join('');
+  $$('#mtypes button').forEach(b=>b.onclick=()=>{S.mtype=b.dataset.t;renderMoves()});
+  $('#t-moves tbody').innerHTML=L.map(m=>`<tr data-m="${m.id}" class="${m.status}"><td>${fmtD(m.mdate)}</td><td><b>${esc(m.ref||'')}</b></td><td><span class="pill t-${m.type}">${TYPES[m.type]}</span></td><td class="det">${mvDetail(m)}</td><td class="r">${m.status==='draft'?'':mvValue(m)}</td><td class="muted">${esc(whoIs(m.created_by))}</td><td>${m.status==='draft'?'<span class="tag">Draft</span>':m.status==='cancelled'?'<span class="tag bad">Cancelled</span>':'<span class="tag ok">Done</span>'}</td></tr>`).join('')||'<tr><td colspan="7" class="muted">Nothing here yet.</td></tr>';
+  $$('#t-moves tr[data-m]').forEach(tr=>tr.onclick=()=>{const m=S.moves.find(x=>x.id==tr.dataset.m);if(m.type==='stocktake'&&m.status==='draft'&&m.company===S.co)openTake(m.id);else openMove(m.id)});
+}
+$('#mq').addEventListener('input',deb(()=>{S.mq=$('#mq').value.trim();renderMoves()},150));
+
+// ----- one movement: detail, print, cancel -----
+async function getLines(id){const {data,error}=await sb.from('bo_movement_lines').select('*').eq('movement_id',id).order('sort').order('id');if(error)throw error;return data||[]}
+const lname=l=>l.name||(l.item_id?S.byId.get(l.item_id)?.name:getRec(l.recipe_id)?.name)||'(item)';
+function linesTable(m,lines){
+  const tot=(v,c)=>`<tr class="tot"><td colspan="${c}">Total</td><td class="r">${R(v)}</td></tr>`;
+  if(m.type==='stocktake'){const g=new Map();for(const l of lines){const k=(l.item_id||'')+'|'+(l.recipe_id||'');const o=g.get(k)||{l,c:0,e:null,d:null,v:0,areas:[]};o.c+=Number(l.counted||0);if(l.expected!=null)o.e=Number(l.expected);if(l.delta!=null)o.d=Number(l.delta);o.v+=Number(l.value||0);if(l.area)o.areas.push(l.area);g.set(k,o)}
+    const rows=[...g.values()].sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)||lname(a.l).localeCompare(lname(b.l)));
+    return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Counted</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">Value</th></tr></thead><tbody>${rows.map(o=>`<tr><td><b>${esc(lname(o.l))}</b><small>${esc(o.l.unit||'')}${o.areas.length?' · '+esc([...new Set(o.areas)].join(', ')):''}</small></td><td class="r">${N(o.c,3)}</td><td class="r">${o.e==null?'–':N(o.e,3)}</td><td class="r ${o.d<0?'neg':o.d>0?'pos':''}">${o.d==null?'–':(o.d>0?'+':'')+N(o.d,3)}</td><td class="r ${o.v<0?'neg':''}">${o.v?R(o.v):''}</td></tr>`).join('')}${tot(rows.reduce((a,o)=>a+o.v,0),4)}</tbody></table>`}
+  if(m.type==='manufacture'){const used=lines.filter(l=>l.delta<0),made=lines.filter(l=>l.delta>0);
+    const t=(L,h)=>`<tr class="sub"><td colspan="4">${h}</td></tr>`+L.map(l=>`<tr><td><b>${esc(lname(l))}</b><small>${esc(l.reason||'')}</small></td><td class="r">${N(l.qty,3)}</td><td>${esc(l.unit||'')}</td><td class="r">${R(l.value)}</td></tr>`).join('');
+    return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Value</th></tr></thead><tbody>${t(used,'Taken out of stock')}${t(made,'Made and added to stock')}<tr class="tot"><td colspan="3">Batch cost</td><td class="r">${R(m.total_value)}</td></tr></tbody></table>`}
+  const rs=m.type==='wastage';const op=m.type==='opening';
+  return `<table class="mvt"><thead><tr><th>Item</th>${op?'<th>Area</th>':''}<th class="r">Qty</th><th>Unit</th><th class="r">Unit cost</th><th class="r">Value</th>${rs?'<th>Reason</th>':''}</tr></thead><tbody>${lines.map(l=>`<tr><td><b>${esc(lname(l))}</b></td>${op?`<td>${esc(l.area||'')}</td>`:''}<td class="r">${N(l.qty,3)}</td><td>${esc(l.unit||'')}</td><td class="r">${R(l.unit_cost)}</td><td class="r">${R(l.value)}</td>${rs?`<td>${esc(l.reason||'')}</td>`:''}</tr>`).join('')}${`<tr class="tot"><td colspan="${op?5:4}">Total</td><td class="r">${R(lines.reduce((a,l)=>a+Number(l.value||0),0))}</td>${rs?'<td></td>':''}</tr>`}</tbody></table>`}
+function metaHtml(m){return `<div class="mvmeta"><div><span>Date</span><b>${fmtD(m.mdate)}</b></div>${m.type==='transfer'?`<div><span>From</span><b>${esc(coName(m.company))}</b></div><div><span>To</span><b>${esc(coName(m.to_company))}</b></div>`:`<div><span>Business</span><b>${esc(coName(m.company))}</b></div>`}<div><span>Captured by</span><b>${esc(whoIs(m.created_by))}</b></div>${m.notes?`<div class="full"><span>Notes</span><b>${esc(m.notes)}</b></div>`:''}</div>`}
+async function openMove(id){const m=S.moves.find(x=>x.id===id)||(await sb.from('bo_movements').select('*').eq('id',id).single()).data;
+  $('#dr-panel').innerHTML='<p class="muted">Loading…</p>';$('#drawer').classList.remove('hide');$('#dr-panel').classList.add('wide');
+  let lines;try{lines=await getLines(id)}catch(e){$('#dr-panel').innerHTML=esc(e.message);return}
+  $('#dr-panel').innerHTML=`<span class="eyebrow">${TYPES[m.type]} · ${esc(m.ref)}</span><h2>${m.type==='manufacture'?esc(getRec(m.recipe_id)?.name||'Manufacturing'):TYPES[m.type]}${m.status==='cancelled'?' <span class="tag bad">Cancelled</span>':''}</h2>${metaHtml(m)}${linesTable(m,lines)}
+   <div class="dr-act">${m.status==='done'&&m.type!=='opening'?'<button class="btn danger" id="b-mvx">Cancel this movement</button>':'<span></span>'}<span style="display:flex;gap:8px"><button class="btn" data-close>Close</button><button class="btn fill" id="b-print">Print / Save PDF</button></span></div>`;
+  $('#b-print').onclick=()=>printMove(m,lines);
+  $('#b-mvx')&&($('#b-mvx').onclick=async()=>{if(!confirm(`Cancel ${m.ref}? Its stock changes will be undone. It stays in the history as cancelled.`))return;
+    const {error}=await sb.rpc('bo_cancel_movement',{mid:m.id});if(error)return toast(error.message);closeDrawer();toast(m.ref+' cancelled');await refreshStock()})}
+function printMove(m,lines){
+  $('#print').innerHTML=`<div class="pd-h"><img src="/assets/img/logo-orange.png" alt=""><div class="r"><h1>${TYPES[m.type]}</h1><b>${esc(m.ref)}</b></div></div>
+   ${m.type==='manufacture'?`<p class="pd-sub">${esc(getRec(m.recipe_id)?.name||'')} · ${N(m.batches)} batch${m.batches==1?'':'es'} · made ${N(m.yield_qty)} ${esc(m.yield_unit||'')}</p>`:''}${metaHtml(m)}${linesTable(m,lines)}
+   ${m.type==='transfer'?`<div class="sign"><div><span>Sent by (${esc(coName(m.company))})</span><i></i><small>Name, signature and date</small></div><div><span>Received by (${esc(coName(m.to_company))})</span><i></i><small>Name, signature and date</small></div></div>`:m.type==='stocktake'?`<div class="sign"><div><span>Counted by</span><i></i><small>Name and signature</small></div><div><span>Checked by</span><i></i><small>Name and signature</small></div></div>`:''}
+   <p class="pd-foot">Printed ${new Date().toLocaleString('en-GB')} · île de païn Back Office</p>`;
+  window.print()}
+async function refreshStock(){await load();await loadMoves();renderStock();renderRecipeList();renderRecipe();renderMoves()}
+
+// ----- editors -----
+function showEditor(title,html){$('#v-moves').classList.add('hide');$('#v-mv').classList.remove('hide');
+  $('#v-mv').innerHTML=`<header class="head"><div><button class="link" id="mv-back">← Stock Movements</button><br><span class="eyebrow">${esc(co().name)}</span><h1>${title}</h1></div></header>${html}`;
+  $('#mv-back').onclick=()=>{if(S.ed&&S.ed.dirty&&!confirm('Leave without posting? What you captured here will be lost.'))return;backToList()};window.scrollTo(0,0)}
+function backToList(){S.ed=null;S.tk=null;$('#v-mv').classList.add('hide');$('#v-moves').classList.remove('hide');renderMoves()}
+
+// transfer + wastage
+function openLines(type){
+  const others=COS.filter(c=>c.id!==S.co);S.ed={type,lines:[],to:others[0].id,date:today(),notes:'',dirty:false};
+  showEditor(type==='transfer'?'New branch transfer':'Record wastage',`<div class="mvcard">
+   <div class="mvform">${type==='transfer'?`<label>From<input value="${esc(co().name)}" disabled></label><label>To<select id="ed-to">${others.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label>`:''}
+    <label>Date<input type="date" id="ed-date" value="${S.ed.date}"></label><label class="grow">Notes<input id="ed-notes" placeholder="${type==='transfer'?'e.g. Weekly bread order for Nest':'e.g. Fridge 2 failed overnight'}"></label></div>
+   <div class="addline"><input id="ed-q" placeholder="+ Add item: search the master stock${type==='transfer'?' or made items':' or made items (e.g. cake slices)'}…" autocomplete="off"><div class="sug hide" id="ed-sug"></div></div>
+   <div id="ed-lines" class="mvlines"></div>
+   <div class="mvfoot"><span id="ed-sum"></span><span class="mvbtns"><button class="btn" id="ed-x">Cancel</button><button class="btn fill" id="ed-post">${type==='transfer'?'Post transfer':'Post wastage'}</button></span></div></div>`);
+  $('#ed-to')&&($('#ed-to').onchange=e=>S.ed.to=e.target.value);$('#ed-date').onchange=e=>S.ed.date=e.target.value;$('#ed-notes').oninput=e=>S.ed.notes=e.target.value;
+  $('#ed-x').onclick=()=>$('#mv-back').click();
+  picker($('#ed-q'),$('#ed-sug'),o=>{const ex=S.ed.lines.find(l=>l.kind===o.kind&&l.id===o.id);if(!ex)S.ed.lines.push({...o,qty:'',reason:type==='wastage'?REASONS[0]:''});S.ed.dirty=true;drawLines();
+    const k=S.ed.lines.findIndex(l=>l.kind===o.kind&&l.id===o.id);const q=$(`#ed-lines [data-i="${k}"] input.q`);q&&q.focus()});
+  $('#ed-post').onclick=postLines;drawLines();setTimeout(()=>$('#ed-q').focus(),50)}
+function drawLines(){const E=S.ed,w=E.type==='wastage';
+  $('#ed-lines').innerHTML=E.lines.length?`<div class="mvl hd"><span>Item</span><span class="r">On hand</span><span class="r">Qty</span>${w?'<span>Reason</span>':''}<span class="r">Value</span><span></span></div>`+E.lines.map((l,i)=>{const over=+l.qty>l.on;
+    return `<div class="mvl" data-i="${i}"><span class="nm"><b>${l.kind==='r'?'↳ ':''}${esc(l.name)}</b><small>${esc(l.sub)}</small></span><span class="r muted oh">${N(l.on,3)}</span>
+     <span class="r qty"><input class="q" type="number" step="any" min="0" inputmode="decimal" value="${esc(l.qty)}"><small>${esc(xu(l.unit))}</small>${over&&l.qty!==''?'<em class="nil">more than on hand</em>':''}</span>
+     ${w?`<span><select class="rs">${REASONS.map(r=>`<option ${r===l.reason?'selected':''}>${r}</option>`).join('')}</select></span>`:''}<span class="r val">${l.qty===''?'':R(+l.qty*l.cost)}</span><span class="r"><button class="x" title="Remove">×</button></span></div>`}).join('')
+   :`<div class="empty sm">Search above to add ${E.type==='transfer'?'what is being sent':'what was thrown away'}.</div>`;
+  const tot=E.lines.reduce((a,l)=>a+(+l.qty||0)*l.cost,0);$('#ed-sum').innerHTML=`${E.lines.length} item${E.lines.length==1?'':'s'} · <b>${R(tot)}</b>`;
+  $$('#ed-lines .mvl[data-i]').forEach(row=>{const l=E.lines[+row.dataset.i];
+    row.querySelector('input.q').addEventListener('input',e=>{l.qty=e.target.value;E.dirty=true;row.querySelector('.val').textContent=l.qty===''?'':R(+l.qty*l.cost);$('#ed-sum').innerHTML=`${E.lines.length} item${E.lines.length==1?'':'s'} · <b>${R(E.lines.reduce((a,l)=>a+(+l.qty||0)*l.cost,0))}</b>`});
+    row.querySelector('input.q').addEventListener('change',drawLines);
+    row.querySelector('.rs')?.addEventListener('change',e=>l.reason=e.target.value);
+    row.querySelector('.x').onclick=()=>{E.lines.splice(+row.dataset.i,1);drawLines()}})}
+async function postLines(){const E=S.ed;const L=E.lines.filter(l=>+l.qty>0);if(!L.length)return toast('Add at least one item with a quantity');
+  if(E.type==='transfer'&&!E.to)return toast('Choose where it is going');
+  const lines=L.map(l=>({item_id:l.kind==='i'?l.id:null,recipe_id:l.kind==='r'?l.id:null,name:l.name,qty:+l.qty,unit:l.unit,delta:-(+l.qty),unit_cost:l.cost,value:+l.qty*l.cost,reason:l.reason||null}));
+  const total=lines.reduce((a,l)=>a+l.value,0);const btn=$('#ed-post');btn.disabled=true;
+  const {data:id,error}=await sb.rpc('bo_post_movement',{p:{movement:{type:E.type,company:S.co,to_company:E.type==='transfer'?E.to:null,mdate:E.date,notes:E.notes||null,total_value:E.type==='wastage'?-total:total},lines}});
+  btn.disabled=false;if(error)return toast('Not posted: '+error.message);
+  toast(E.type==='transfer'?`Transfer posted. Stock moved to ${coName(E.to)}.`:'Wastage posted');S.ed=null;await refreshStock();backToList();openMove(id)}
+
+// manufacturing
+function openMake(rid){
+  S.ed={type:'manufacture',rid:rid||null,batches:1,actual:null,date:today(),notes:'',dirty:false};
+  const grp={};for(const r of S.recipes)(grp[r.category||'Other']??=[]).push(r);
+  showEditor('Manufacture a batch',`<div class="mvcard">
+   <div class="mvform"><label class="grow">Recipe<select id="mk-r"><option value="">Choose a recipe…</option>${Object.keys(grp).sort().map(g=>`<optgroup label="${esc(g)}">${grp[g].map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>
+    <label>Batches<input id="mk-b" type="number" step="any" min="0" inputmode="decimal" value="1"></label><label>Date<input type="date" id="mk-d" value="${S.ed.date}"></label></div>
+   <div id="mk-body"></div></div>`);
+  $('#mk-r').value=rid||'';$('#mk-r').onchange=e=>{S.ed.rid=+e.target.value||null;S.ed.actual=null;drawMake()};
+  $('#mk-b').oninput=e=>{S.ed.batches=+e.target.value||0;S.ed.actual=null;drawMake()};$('#mk-d').onchange=e=>S.ed.date=e.target.value;drawMake()}
+function makePlan(){const E=S.ed,r=getRec(E.rid);if(!r)return null;const b=E.batches||0;const use=[],skip=[];let cost=0;
+  for(const l of S.lines.filter(x=>x.recipe_id===r.id).sort((a,b)=>a.sort-b.sort)){
+    if(l.no_cost)continue;const nm=lname({...l,name:null})||l.label;
+    if(l.qty==null||l.qty===''){skip.push([l.label||nm,'no quantity in the recipe']);continue}
+    if(l.item_id){const it=S.byId.get(l.item_id);if(!it){skip.push([l.label,'item removed']);continue}const c=convQty(l,it.count_unit);if(!c){skip.push([it.name,`unit doesn't match how it's stocked (${ul(it)})`]);continue}
+      const packs=c.q*b/toBase(it.count_size||1,it.count_unit);const v=packs*(Number(it.unit_price)||0);cost+=v;use.push({kind:'i',id:it.id,name:it.name,per:`${N(l.qty,3)} ${l.unit}`,qty:packs,unit:ul(it),cost:Number(it.unit_price)||0,value:v,on:S.cnt.get(it.id)||0});continue}
+    if(l.sub_recipe_id){const sr=getRec(l.sub_recipe_id);if(!sr){skip.push([l.label,'sub-recipe removed']);continue}const c=convQty(l,sr.yield_unit);if(!c){skip.push([sr.name,`recipe makes ${sr.yield_unit}, the line uses ${l.unit}`]);continue}
+      const q=c.q*b/un(sr.yield_unit)[1];const uc=rUnit(sr);cost+=q*uc;use.push({kind:'r',id:sr.id,name:sr.name,per:`${N(l.qty,3)} ${l.unit}`,qty:q,unit:sr.yield_unit,cost:uc,value:q*uc,on:S.made.get(sr.id)||0});continue}
+    skip.push([l.label||'(ingredient)','not linked to the master stock'])}
+  const exp=(Number(r.yield_qty)||1)*b;const act=E.actual==null?exp:E.actual;return{r,use,skip,cost,exp,act}}
+function drawMake(){const P=makePlan();const box=$('#mk-body');
+  if(!P){box.innerHTML='<div class="empty sm">Choose a recipe to see what it uses.</div>';return}
+  const {r,use,skip,cost,exp,act}=P;const per=act>0?cost/act:null;
+  box.innerHTML=`<div class="mkyield"><div><span>Recipe makes</span><b>${N(r.yield_qty)} ${esc(r.yield_unit)} per batch</b><small>Expected: ${N(exp)} ${esc(r.yield_unit)}</small></div>
+    <label>Actually made<span class="qty"><input id="mk-a" type="number" step="any" min="0" inputmode="decimal" value="${N(act,3).replace(/,/g,'')}"><small>${esc(r.yield_unit)}</small></span></label>
+    <div><span>Cost per ${esc(r.yield_unit)}</span><b>${per!=null?R(per):'–'}</b>${act!==exp&&exp?`<small class="${act<exp?'neg':''}">${act<exp?'Lost ':'Extra '}${N(Math.abs(exp-act),3)} vs recipe</small>`:''}</div>
+    <div><span>Batch cost</span><b>${R(cost)}</b><small>In stock now: ${N(S.made.get(r.id)||0,3)} ${esc(r.yield_unit)}</small></div></div>
+   ${['portion','each'].includes(r.yield_unit)?'':`<p class="hint">Tip: to stock this as slices or portions, set the recipe's <b>Makes</b> to e.g. 12 portion.</p>`}
+   <div class="mvlines"><div class="mvl hd mk"><span>Ingredient</span><span class="r">Per batch</span><span class="r">Out of stock</span><span class="r">On hand after</span><span class="r">Cost</span></div>
+   ${use.map(u=>`<div class="mvl mk"><span class="nm"><b>${u.kind==='r'?'↳ ':''}${esc(u.name)}</b></span><span class="r muted">${esc(u.per)}</span><span class="r">${N(u.qty,3)} ${esc(xu(u.unit))}</span><span class="r ${u.on-u.qty<0?'neg':'muted'}">${N(u.on-u.qty,3)}</span><span class="r">${R(u.value)}</span></div>`).join('')}</div>
+   ${skip.length?`<div class="skip"><b>${skip.length} ingredient${skip.length>1?'s':''} won't come out of stock</b>${skip.map(s=>`<div>${esc(s[0])} <small>· ${esc(s[1])}</small></div>`).join('')}<small>Fix these in the recipe and they'll be included next time.</small></div>`:''}
+   <label style="margin-top:14px">Notes<input id="mk-n" value="${esc(S.ed.notes)}" placeholder="Optional"></label>
+   <div class="mvfoot"><span>${N(act,3)} ${esc(r.yield_unit)} into stock · <b>${R(cost)}</b></span><span class="mvbtns"><button class="btn" id="mk-x">Cancel</button><button class="btn fill" id="mk-post">Post manufacturing</button></span></div>`;
+  $('#mk-a').addEventListener('change',e=>{S.ed.actual=e.target.value===''?0:+e.target.value;drawMake()});$('#mk-n').oninput=e=>S.ed.notes=e.target.value;
+  $('#mk-x').onclick=()=>$('#mv-back').click();$('#mk-post').onclick=postMake}
+async function postMake(){const P=makePlan();if(!P)return;const {r,use,cost,act}=P;if(!(S.ed.batches>0))return toast('Enter how many batches');if(!(act>0))return toast('Enter how much was made');
+  const lines=use.map(u=>({item_id:u.kind==='i'?u.id:null,recipe_id:u.kind==='r'?u.id:null,name:u.name,qty:u.qty,unit:u.unit,delta:-u.qty,unit_cost:u.cost,value:u.value,reason:'Per batch: '+u.per}));
+  lines.push({recipe_id:r.id,name:r.name,qty:act,unit:r.yield_unit,delta:act,unit_cost:cost/act,value:cost,reason:'Made'});
+  $('#mk-post').disabled=true;const {data:id,error}=await sb.rpc('bo_post_movement',{p:{movement:{type:'manufacture',company:S.co,mdate:S.ed.date,recipe_id:r.id,batches:S.ed.batches,yield_qty:act,yield_unit:r.yield_unit,notes:S.ed.notes||null,total_value:cost},lines}});
+  if(error){$('#mk-post').disabled=false;return toast('Not posted: '+error.message)}
+  toast(`${N(act,3)} ${r.yield_unit} of ${r.name} added to stock`);S.ed=null;await refreshStock();backToList();openMove(id)}
+
+// stock take
+const MADE='Made items',OTHER='Other';
+async function newTake(){const d=(S.moves||[]).find(m=>m.type==='stocktake'&&m.status==='draft'&&m.company===S.co);if(d){toast('Carrying on with the stock take in progress');return openTake(d.id)}
+  const {data,error}=await sb.from('bo_movements').insert({type:'stocktake',company:S.co,status:'draft',mdate:today()}).select().single();if(error)return toast(error.message);await loadMoves();openTake(data.id)}
+async function openTake(mid){let lines;try{lines=await getLines(mid)}catch(e){return toast(e.message)}
+  const m=S.moves.find(x=>x.id===mid);const map=new Map();for(const l of lines)map.set(`${l.item_id?'i'+l.item_id:'r'+l.recipe_id}|${l.area}`,l);
+  const areas=[...new Set(S.counts.map(c=>c.area).concat(lines.map(l=>l.area)).filter(a=>a&&a!==MADE&&a!==OTHER))].sort();
+  S.tk={m,map,areas:[...areas,OTHER,MADE],area:areas[0]||OTHER,q:'',exp:false};
+  showEditor('Stock take',`<div class="mvcard tk">
+   <div class="mvform"><label>Count date<input type="date" id="tk-d" value="${m.mdate||today()}"></label><label class="grow">Notes<input id="tk-n" value="${esc(m.notes||'')}" placeholder="e.g. Month-end count"></label><label class="chip"><input type="checkbox" id="tk-e"> Show expected</label></div>
+   <div class="rcats" id="tk-areas"></div>
+   <div class="search"><span>⌕</span><input id="tk-q" placeholder="Search to count any item into this area…" autocomplete="off"></div>
+   <div id="tk-list" class="tklist"></div>
+   <div class="mvfoot sticky"><span id="tk-sum"></span><span class="mvbtns"><button class="btn danger" id="tk-del">Delete draft</button><button class="btn" id="tk-close">Save & close</button><button class="btn fill" id="tk-fin">Finish stock take</button></span></div></div>`);
+  const saveHead=deb(async()=>{await sb.from('bo_movements').update({mdate:$('#tk-d').value||today(),notes:$('#tk-n').value||null,updated_at:new Date().toISOString()}).eq('id',mid);m.mdate=$('#tk-d').value;m.notes=$('#tk-n').value},500);
+  $('#tk-d').onchange=saveHead;$('#tk-n').oninput=saveHead;$('#tk-e').onchange=e=>{S.tk.exp=e.target.checked;drawTake()};
+  $('#tk-q').oninput=deb(e=>{S.tk.q=$('#tk-q').value.trim();drawTake()},150);
+  $('#tk-close').onclick=backToList;$('#tk-fin').onclick=finishTake;
+  $('#tk-del').onclick=async()=>{if(!confirm('Delete this stock take draft and its counts?'))return;const {error}=await sb.from('bo_movements').delete().eq('id',mid);if(error)return toast(error.message);await loadMoves();backToList();toast('Draft deleted')};
+  drawTake()}
+function takeRows(){const T=S.tk,a=T.area;
+  if(T.q)return findThings(T.q,true);
+  if(a===MADE)return [...S.recById.values()].filter(r=>r.company===S.co||S.made.has(r.id)).filter(r=>(S.made.get(r.id)||0)!==0||T.map.has(`r${r.id}|${a}`)||['portion','each'].includes(r.yield_unit)).sort((x,y)=>x.name.localeCompare(y.name)).map(r=>thing('r',r.id));
+  const inArea=new Set(S.counts.filter(c=>c.area===a).map(c=>c.item_id));for(const k of T.map.keys()){const [t,ar]=k.split('|');if(ar===a&&t[0]==='i')inArea.add(+t.slice(1))}
+  if(a===OTHER){const placed=new Set(S.counts.map(c=>c.item_id));for(const i of S.items)if(!placed.has(i.id)&&((i.businesses||[]).includes(S.co)||(S.cnt.get(i.id)||0)!==0))inArea.add(i.id)}
+  return [...inArea].map(id=>thing('i',id)).filter(Boolean).sort((x,y)=>(S.byId.get(x.id).department||'').localeCompare(S.byId.get(y.id).department||'')||x.name.localeCompare(y.name))}
+function drawTake(){const T=S.tk;const key=o=>`${o.kind}${o.id}`;
+  const cntIn=a=>[...T.map.entries()].filter(([k,l])=>k.endsWith('|'+a)&&l.counted!=null).length;
+  $('#tk-areas').innerHTML=T.areas.map(a=>`<button class="${a===T.area?'on':''}" data-a="${esc(a)}">${esc(a)}${cntIn(a)?` <small>${cntIn(a)}</small>`:''}</button>`).join('')+'<button data-add>+ Area</button>';
+  $$('#tk-areas [data-a]').forEach(b=>b.onclick=()=>{T.area=b.dataset.a;T.q='';$('#tk-q').value='';drawTake()});
+  $('#tk-areas [data-add]').onclick=()=>{const n=prompt('Name of the new area (e.g. Walk-in fridge)');if(n&&n.trim()){T.areas.splice(T.areas.length-2,0,n.trim());T.area=n.trim();drawTake()}};
+  const rows=takeRows();let lastDep=null;
+  $('#tk-list').innerHTML=(T.q?`<p class="hint">Counting into <b>${esc(T.area)}</b></p>`:'')+rows.map(o=>{const l=T.map.get(`${key(o)}|${T.area}`);
+    const else_=[...T.map.entries()].filter(([k,x])=>k.startsWith(key(o)+'|')&&!k.endsWith('|'+T.area)&&x.counted!=null).map(([k,x])=>`${N(x.counted,3)} in ${k.split('|')[1]}`);
+    const dep=o.kind==='i'?S.byId.get(o.id).department||'':'';const h=!T.q&&T.area!==MADE&&dep!==lastDep?`<div class="tkdep">${esc(dep||'Other')}</div>`:'';lastDep=dep;
+    return h+`<div class="tkrow ${l&&l.counted!=null?'done':''}" data-k="${key(o)}"><span class="nm"><b>${esc(o.name)}</b><small>${esc(o.sub)}${else_.length?' · <i>'+esc(else_.join(', '))+'</i>':''}</small></span>${T.exp?`<span class="r muted ex">exp. ${N(o.on,3)}</span>`:''}<span class="qty"><input type="number" step="any" min="0" inputmode="decimal" value="${l&&l.counted!=null?l.counted:''}" placeholder="–"><small>${esc(xu(o.unit))}</small></span></div>`}).join('')
+   ||'<div class="empty sm">Nothing listed in this area yet. Search above to add items.</div>';
+  const all=[...T.map.values()].filter(l=>l.counted!=null);const items=new Set(all.map(l=>(l.item_id?'i'+l.item_id:'r'+l.recipe_id)));
+  $('#tk-sum').innerHTML=`<b>${items.size}</b> item${items.size==1?'':'s'} counted <span class="saved" id="tk-saved"></span>`;
+  $$('#tk-list .tkrow').forEach(row=>{const k=row.dataset.k;const inp=row.querySelector('input');inp.addEventListener('change',()=>saveCount(k,inp.value,row));
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const n=row.nextElementSibling?.matches('.tkdep')?row.nextElementSibling.nextElementSibling:row.nextElementSibling;n?.querySelector('input')?.focus()}})})}
+async function saveCount(k,v,row){const T=S.tk,mk=`${k}|${T.area}`;let l=T.map.get(mk);const kind=k[0],id=+k.slice(1);const o=thing(kind,id);$('#tk-saved').textContent='Saving…';let error;
+  if(v===''){if(l){({error}=await sb.from('bo_movement_lines').delete().eq('id',l.id));T.map.delete(mk)}}
+  else if(l){({error}=await sb.from('bo_movement_lines').update({counted:+v,unit_cost:o.cost}).eq('id',l.id));l.counted=+v}
+  else{const r=await sb.from('bo_movement_lines').insert({movement_id:T.m.id,item_id:kind==='i'?id:null,recipe_id:kind==='r'?id:null,name:o.name,unit:o.unit,area:T.area,counted:+v,unit_cost:o.cost}).select().single();error=r.error;if(r.data)T.map.set(mk,r.data)}
+  $('#tk-saved').textContent=error?'Not saved: '+error.message:'Saved';row.classList.toggle('done',v!=='');
+  const items=new Set([...T.map.values()].filter(x=>x.counted!=null).map(x=>(x.item_id?'i'+x.item_id:'r'+x.recipe_id)));$('#tk-sum b').textContent=items.size;
+  $$('#tk-areas [data-a]').forEach(b=>{const a=b.dataset.a,n=[...T.map.entries()].filter(([kk,x])=>kk.endsWith('|'+a)&&x.counted!=null).length;b.innerHTML=esc(a)+(n?` <small>${n}</small>`:'')})}
+function finishTake(){const T=S.tk;const g=new Map();for(const l of T.map.values()){if(l.counted==null)continue;const k=l.item_id?'i'+l.item_id:'r'+l.recipe_id;g.set(k,(g.get(k)||0)+Number(l.counted))}
+  if(!g.size)return toast('Nothing counted yet');
+  let varV=0,up=0,down=0;for(const [k,c] of g){const o=thing(k[0],+k.slice(1));if(!o)continue;const d=c-o.on;varV+=d*o.cost;if(d>0)up++;if(d<0)down++}
+  const unc=[];for(const [id,q] of S.cnt)if(q!==0&&!g.has('i'+id))unc.push(thing('i',id));for(const [id,q] of S.made)if(q!==0&&!g.has('r'+id)){const t=thing('r',id);t&&unc.push(t)}
+  const uncV=unc.reduce((a,o)=>a+o.on*o.cost,0);
+  $('#dr-panel').classList.remove('wide');$('#drawer').classList.remove('hide');
+  $('#dr-panel').innerHTML=`<span class="eyebrow">Stock take · ${esc(co().name)}</span><h2>Finish and post</h2>
+   <div class="mvmeta"><div><span>Items counted</span><b>${g.size}</b></div><div><span>Counted more than expected</span><b>${up}</b></div><div><span>Counted less than expected</span><b>${down}</b></div><div><span>Value difference</span><b class="${varV<0?'neg':''}">${varV<0?'−':'+'}${R(Math.abs(varV))}</b></div></div>
+   <p class="hint">After posting, stock on hand for every counted item becomes exactly what you counted. The differences are saved on the stock take.</p>
+   ${unc.length?`<label class="chip" style="margin-top:12px;white-space:normal"><input type="checkbox" id="fz"> Set the ${unc.length} items that have stock but weren't counted to zero (${R(uncV)})</label><p class="hint">Leave this off for a partial count, e.g. only the pastry fridge.</p>`:''}
+   <div class="dr-act"><button class="btn" data-close>Back to counting</button><button class="btn fill" id="fz-post">Post stock take</button></div>`;
+  $('#fz-post').onclick=async()=>{$('#fz-post').disabled=true;const {data,error}=await sb.rpc('bo_post_stocktake',{mid:T.m.id,zero_uncounted:!!$('#fz')?.checked});
+    if(error){$('#fz-post').disabled=false;return toast('Not posted: '+error.message)}closeDrawer();const id=T.m.id;S.tk=null;await refreshStock();backToList();toast('Stock take posted');openMove(id)}}
+
+$('#b-take').onclick=newTake;$('#b-tr').onclick=()=>openLines('transfer');$('#b-ws').onclick=()=>openLines('wastage');$('#b-mk').onclick=()=>openMake(null);
 
 boot();
 })();

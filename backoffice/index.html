@@ -33,7 +33,7 @@
     <nav id="tabs">
       <button data-tab="stock" class="on"><i>▦</i>Master Stock</button>
       <button data-tab="recipes"><i>✎</i>Recipes</button>
-      <button data-tab="take" disabled title="Coming next"><i>✓</i>Stock Take <em>soon</em></button>
+      <button data-tab="moves"><i>⇄</i>Stock Movements</button>
     </nav>
     <div class="side-foot"><span id="who"></span><button id="b-out" class="link">Sign out</button></div>
   </aside>
@@ -52,11 +52,11 @@
         <select id="f-sup"><option value="">All suppliers</option></select>
         <select id="f-dep"><option value="">All departments</option></select>
         <label class="chip"><input type="checkbox" id="f-mine" checked> Used by this business</label>
-        <label class="chip"><input type="checkbox" id="f-counted"> Counted only</label>
+        <label class="chip"><input type="checkbox" id="f-counted"> In stock only</label>
         <label class="chip warn"><input type="checkbox" id="f-review"> Needs review</label>
       </div>
       <div class="tablewrap"><table class="grid" id="t-stock">
-        <thead><tr><th data-s="name">Item</th><th data-s="supplier">Supplier</th><th data-s="category">Category</th><th>Unit</th><th data-s="unit_price" class="r">Price ex VAT</th><th class="r">Cost per</th><th data-s="count" class="r">Count</th><th data-s="value" class="r">Value</th><th class="r">Recipes</th></tr></thead>
+        <thead><tr><th data-s="name">Item</th><th data-s="supplier">Supplier</th><th data-s="category">Category</th><th>Unit</th><th data-s="unit_price" class="r">Price ex VAT</th><th class="r">Cost per</th><th data-s="count" class="r">On hand</th><th data-s="value" class="r">Value</th><th class="r">Recipes</th></tr></thead>
         <tbody></tbody></table></div>
       <p class="more" id="more"></p>
     </section>
@@ -76,12 +76,26 @@
         <div class="redit" id="redit"><div class="empty">Pick a recipe on the left, or create a new one.<br><br>Ingredients come straight from the Master Stock, so costs stay up to date.</div></div>
       </div>
     </section>
+    <!-- MOVEMENTS -->
+    <section id="v-moves" class="hide">
+      <header class="head">
+        <div><span class="eyebrow" id="co-name3"></span><h1>Stock Movements</h1></div>
+        <div class="head-act wrap"><button class="btn fill" id="b-take">+ Stock take</button><button class="btn" id="b-tr">+ Transfer</button><button class="btn" id="b-ws">+ Wastage</button><button class="btn" id="b-mk">+ Manufacture</button></div>
+      </header>
+      <div class="kpis" id="mkpis"></div>
+      <div class="bar"><div class="search"><span>⌕</span><input id="mq" placeholder="Search reference, notes, recipe, branch…" autocomplete="off"></div></div>
+      <div class="rcats" id="mtypes" style="margin-bottom:12px"></div>
+      <div class="tablewrap"><table class="grid" id="t-moves">
+        <thead><tr><th>Date</th><th>Ref</th><th>Type</th><th>Details</th><th class="r">Value</th><th>By</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section id="v-mv" class="hide"></section>
   </main>
 </div>
 
 <!-- ITEM DRAWER -->
 <div class="drawer hide" id="drawer"><div class="dr-back" data-close></div><div class="dr-panel" id="dr-panel"></div></div>
 <div class="toast hide" id="toast"></div>
+<div id="print"></div>
 
 <script src="/assets/vendor/supabase.js"></script>
 <script src="/assets/club-config.js"></script>
