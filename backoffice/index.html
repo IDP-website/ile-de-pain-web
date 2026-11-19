@@ -51,12 +51,13 @@
         <div class="search"><span>⌕</span><input id="q" placeholder="Search items, suppliers, categories…" autocomplete="off"></div>
         <select id="f-sup"><option value="">All suppliers</option></select>
         <select id="f-dep"><option value="">All departments</option></select>
+        <select id="f-vat"><option value="">VAT and no VAT</option><option value="1">VAT items</option><option value="0">No VAT items</option></select>
         <label class="chip"><input type="checkbox" id="f-mine" checked> Used by this business</label>
         <label class="chip"><input type="checkbox" id="f-counted"> In stock only</label>
         <label class="chip warn"><input type="checkbox" id="f-review"> Needs review</label>
       </div>
       <div class="tablewrap"><table class="grid" id="t-stock">
-        <thead><tr><th data-s="name">Item</th><th data-s="supplier">Supplier</th><th data-s="category">Category</th><th>Unit</th><th data-s="unit_price" class="r">Price ex VAT</th><th class="r">Cost per</th><th data-s="count" class="r">On hand</th><th data-s="value" class="r">Value</th><th class="r">Recipes</th></tr></thead>
+        <thead><tr><th data-s="name">Item</th><th data-s="supplier">Supplier</th><th data-s="category">Category</th><th>Unit</th><th data-s="unit_price" class="r">Price ex VAT</th><th data-s="vat">VAT</th><th class="r">Cost per</th><th data-s="count" class="r">On hand</th><th data-s="value" class="r">Value</th><th class="r">Recipes</th></tr></thead>
         <tbody></tbody></table></div>
       <p class="more" id="more"></p>
     </section>

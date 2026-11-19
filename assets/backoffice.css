@@ -277,3 +277,12 @@ label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;
 .mkyield select{margin-top:6px;width:100%}.mkyield small.neg{color:var(--bad,#B3261E)}
 @media (max-width:700px){.rmode{grid-template-columns:1fr 1fr;gap:6px}.rmode button span{display:none}.kpis.sm{grid-template-columns:1fr 1fr 1fr;gap:6px}.kpis.sm .kpi{padding:10px}.kpis.sm .kpi b{font-size:17px}}
 .ritem.hist>div{display:block}.ritem.hist small{display:block}
+/* VAT */
+#t-stock td small{display:block}
+.vtg{border:1px solid var(--line);background:var(--flour);color:var(--ink-2);border-radius:99px;padding:3px 10px;font:inherit;font-size:11.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+.vtg.on{background:#E6EEF7;border-color:#C9D9EC;color:#2D5B8A}.vtg:hover{border-color:var(--co)}
+.vatrow>span{display:block;font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:6px}
+.seg2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg2 label{display:flex!important;flex-direction:column!important;gap:0!important;border:1px solid var(--line);border-radius:12px;padding:9px 12px;cursor:pointer;background:var(--flour)}
+.seg2 input{position:absolute;opacity:0;pointer-events:none}.seg2 b{font-size:13.5px;color:var(--ink)}.seg2 small{font-size:11.5px;color:var(--ink-2);font-weight:500}
+.seg2 label:has(input:checked){border-color:var(--co);box-shadow:inset 0 0 0 1px var(--co);background:#fff}

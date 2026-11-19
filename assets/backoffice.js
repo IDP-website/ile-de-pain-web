@@ -124,11 +124,11 @@ function fillFilters(){
 }
 const review=i=>!!i.added_from||!(Number(i.unit_price)>0);
 function filtered(){
-  const q=$('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean),sup=$('#f-sup').value,dep=$('#f-dep').value,mine=$('#f-mine').checked,cnt=$('#f-counted').checked,rev=$('#f-review').checked;
+  const q=$('#q').value.trim().toLowerCase().split(/\s+/).filter(Boolean),sup=$('#f-sup').value,dep=$('#f-dep').value,mine=$('#f-mine').checked,cnt=$('#f-counted').checked,rev=$('#f-review').checked,vf=$('#f-vat').value;
   let L=S.items.filter(i=>{
     if(sup&&i.supplier!==sup)return false;if(dep&&i.department!==dep)return false;
     if(mine&&!(i.businesses||[]).includes(S.co)&&!S.cnt.has(i.id)&&!S.uses.has(i.id))return false;
-    if(cnt&&!(S.cnt.get(i.id)>0))return false;if(rev&&!review(i))return false;
+    if(cnt&&!(S.cnt.get(i.id)>0))return false;if(rev&&!review(i))return false;if(vf&&(i.vat!==false)!==(vf==='1'))return false;
     if(q.length){const h=[i.name,i.supplier,i.category,i.sub_category,i.department,i.location].join(' ').toLowerCase();if(!q.every(w=>h.includes(w)))return false}
     return true});
   const [k,dir]=S.sort;const v=i=>k==='count'?(S.cnt.get(i.id)??-1):k==='value'?((S.cnt.get(i.id)||0)*(i.unit_price||0)):k==='unit_price'?Number(i.unit_price??-1):String(i[k]??'').toLowerCase();
@@ -142,14 +142,17 @@ function renderStock(){
   $('#t-stock tbody').innerHTML=shown.map(i=>{const c=S.cnt.get(i.id),u=S.uses.get(i.id);
     return `<tr data-id="${i.id}"><td class="name">${esc(i.name)}${i.added_from?'<span class="tag">new</span>':''}<small>${esc([i.department,i.location].filter(Boolean).join(' · '))}</small></td>
     <td class="muted">${esc(i.supplier||'')}</td><td class="muted">${esc(i.category||'')}</td><td class="muted">${N(i.count_size,3)} ${esc(i.count_unit)}</td>
-    <td class="r">${Number(i.unit_price)>0?R(i.unit_price):'<span class="nil">no price</span>'}</td><td class="r muted">${perLabel(i)}</td>
-    <td class="r">${c!=null?N(c,3):'<span class="muted">–</span>'}</td><td class="r">${c!=null&&i.unit_price?R(c*i.unit_price):''}</td><td class="r">${u?u:''}</td></tr>`}).join('')||'<tr><td colspan="9" class="muted">No items match.</td></tr>';
+    <td class="r">${Number(i.unit_price)>0?R(i.unit_price)+(i.vat!==false?`<small>incl ${R(i.unit_price*1.15)}</small>`:'<small>no VAT</small>'):'<span class="nil">no price</span>'}</td><td><button class="vtg ${i.vat!==false?'on':''}" data-vat="${i.id}" title="Tap to switch">${i.vat!==false?'VAT':'No VAT'}</button></td><td class="r muted">${perLabel(i)}</td>
+    <td class="r">${c!=null?N(c,3):'<span class="muted">–</span>'}</td><td class="r">${c!=null&&i.unit_price?R(c*i.unit_price):''}</td><td class="r">${u?u:''}</td></tr>`}).join('')||'<tr><td colspan="10" class="muted">No items match.</td></tr>';
   $('#more').textContent=L.length>400?`Showing 400 of ${L.length} items. Search or filter to narrow it down.`:`${L.length} items`;
-  $$('#t-stock tbody tr[data-id]').forEach(tr=>tr.onclick=()=>openItem(Number(tr.dataset.id)));
+  $$('#t-stock tbody tr[data-id]').forEach(tr=>tr.onclick=e=>{if(e.target.closest('[data-vat]'))return;openItem(Number(tr.dataset.id))});
+  $$('#t-stock [data-vat]').forEach(b=>b.onclick=async()=>{const it=S.byId.get(+b.dataset.vat);const v=it.vat===false;b.disabled=true;
+    const {error}=await sb.from('bo_items').update({vat:v,updated_at:new Date().toISOString()}).eq('id',it.id);b.disabled=false;if(error)return toast('Not saved: '+error.message);
+    it.vat=v;const x=S.items.find(i=>i.id===it.id);if(x)x.vat=v;toast(`${it.name}: ${v?'VAT applies (15%)':'no VAT'}`);renderStock()});
 }
-['#q','#f-sup','#f-dep','#f-mine','#f-counted','#f-review'].forEach(s=>$(s).addEventListener(s==='#q'?'input':'change',deb(renderStock,s==='#q'?150:0)));
+['#q','#f-sup','#f-dep','#f-vat','#f-mine','#f-counted','#f-review'].forEach(s=>$(s).addEventListener(s==='#q'?'input':'change',deb(renderStock,s==='#q'?150:0)));
 $$('#t-stock th[data-s]').forEach(th=>th.onclick=()=>{const k=th.dataset.s;S.sort=[k,S.sort[0]===k?-S.sort[1]:1];renderStock()});
-$('#b-export').onclick=()=>{const L=filtered();const rows=[['Item','Supplier','Department','Category','Count size','Count unit','Price ex VAT','On hand','Value']].concat(L.map(i=>{const c=S.cnt.get(i.id);return[i.name,i.supplier,i.department,i.category,i.count_size,i.count_unit,i.unit_price,c??'',c!=null&&i.unit_price?(c*i.unit_price).toFixed(2):'']}));
+$('#b-export').onclick=()=>{const L=filtered();const rows=[['Item','Supplier','Department','Category','Count size','Count unit','Price ex VAT','VAT','Price incl VAT','On hand','Value']].concat(L.map(i=>{const c=S.cnt.get(i.id);return[i.name,i.supplier,i.department,i.category,i.count_size,i.count_unit,i.unit_price,i.vat!==false?'VAT':'No VAT',i.unit_price!=null?(i.unit_price*(i.vat!==false?1.15:1)).toFixed(2):'',c??'',c!=null&&i.unit_price?(c*i.unit_price).toFixed(2):'']}));
   const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`master-stock-${S.co}.csv`;a.click()};
 $('#b-add').onclick=()=>openItem(null);
 
@@ -158,7 +161,7 @@ const closeDrawer=()=>$('#drawer').classList.add('hide');
 $('#drawer').addEventListener('click',e=>{if(e.target.dataset.close!=null)closeDrawer()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 async function openItem(id){
-  const it=id?{...S.byId.get(id)}:{name:'',unit_price:null,count_size:1,count_unit:'each',businesses:[S.co]};
+  const it=id?{...S.byId.get(id)}:{name:'',unit_price:null,count_size:1,count_unit:'each',vat:true,businesses:[S.co]};
   const counts=id?S.counts.filter(c=>c.item_id===id):[];
   let used=[];if(id){const {data}=await sb.from('bo_recipe_lines').select('qty,unit,bo_recipes(name,company)').eq('item_id',id);used=data||[]}
   const f=(k,l,t='text',cls='')=>`<label class="${cls}">${l}<input name="${k}" type="${t}" ${t==='number'?'step="any"':''} value="${esc(it[k]??'')}"></label>`;
@@ -167,7 +170,8 @@ async function openItem(id){
    ${f('name','Item name','text','full')}
    ${f('supplier','Supplier')}${f('department','Department')}
    ${f('category','Category')}${f('sub_category','Sub category')}
-   ${f('unit_price','Price ex VAT (R)','number')}
+   <div class="full vatrow"><span>VAT</span><div class="seg2"><label><input type="radio" name="vat" value="1" ${it.vat!==false?'checked':''}><b>VAT applies</b><small>15% on top</small></label><label><input type="radio" name="vat" value="0" ${it.vat===false?'checked':''}><b>No VAT</b><small>Zero-rated or exempt</small></label></div></div>
+   <label><span id="dr-pl">${it.vat!==false?'Price ex VAT (R)':'Price (R)'}</span><input name="unit_price" type="number" step="any" value="${esc(it.unit_price??'')}"><small class="muted" id="dr-incl"></small></label>
    <label>Priced per<span style="display:flex;gap:6px"><input name="count_size" type="number" step="any" value="${esc(it.count_size??1)}" style="width:50%"><select name="count_unit" style="width:50%">${['each','g','kg','ml','L','cl'].map(u=>`<option ${String(it.count_unit).toLowerCase()===u.toLowerCase()?'selected':''}>${u}</option>`).join('')}</select></span></label>
    ${f('case_size','Case / box size')}${f('case_price','Case price ex VAT','number')}
    ${f('location','Storage / location')}${f('unit_label','Original unit label')}
@@ -189,10 +193,11 @@ async function openItem(id){
   if(id)sb.from('bo_price_log').select('*').eq('item_id',id).order('id',{ascending:false}).limit(20).then(({data})=>{const h=$('#dr-price');if(!h)return;
     h.innerHTML=(data||[]).length?data.map(l=>`<div><span>${new Date(l.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})} · ${esc(l.source||'')}${l.applied?'':' <small class="muted">· lower than current, kept the higher price</small>'}</span><b class="${l.applied?'neg':'muted'}">${l.applied?R(l.old_price)+' → '+R(l.new_price):R(l.invoice_price)}</b></div>`).join(''):'<p class="muted">No price changes logged yet.</p>'});
   const form=$('#f-item');
-  form.addEventListener('input',()=>{const d=Object.fromEntries(new FormData(form));$('#dr-per').textContent=perLabel({unit_price:d.unit_price===''?null:+d.unit_price,count_size:+d.count_size||1,count_unit:d.count_unit})});
+  const vatUi=()=>{const d=Object.fromEntries(new FormData(form));const v=d.vat!=='0',p=d.unit_price===''?null:+d.unit_price;$('#dr-pl').textContent=v?'Price ex VAT (R)':'Price (R)';$('#dr-incl').textContent=p==null?'':v?`Incl VAT: ${R(p*1.15)}`:'No VAT added';};vatUi();
+  form.addEventListener('input',()=>{vatUi();const d=Object.fromEntries(new FormData(form));$('#dr-per').textContent=perLabel({unit_price:d.unit_price===''?null:+d.unit_price,count_size:+d.count_size||1,count_unit:d.count_unit})});
   form.onsubmit=async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(form));
     const row={name:d.name.trim(),supplier:d.supplier||null,department:d.department||null,category:d.category||null,sub_category:d.sub_category||null,unit_price:d.unit_price===''?null:+d.unit_price,
-      count_size:+d.count_size||1,count_unit:d.count_unit,case_size:d.case_size||null,case_price:d.case_price===''?null:+d.case_price,location:d.location||null,unit_label:d.unit_label||null,notes:d.notes||null,
+      count_size:+d.count_size||1,count_unit:d.count_unit,case_size:d.case_size||null,case_price:d.case_price===''?null:+d.case_price,location:d.location||null,unit_label:d.unit_label||null,notes:d.notes||null,vat:d.vat!=='0',
       businesses:new FormData(form).getAll('biz'),updated_at:new Date().toISOString()};
     if(d.reviewed)row.added_from=null;
     if(!row.name)return toast('Give the item a name');
