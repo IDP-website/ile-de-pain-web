@@ -39,7 +39,7 @@ ft.innerHTML=`<div class="wrap"><div class="big"><img src="/assets/img/logo-whit
  <div><b>Say hello</b><a href="tel:${PHONE}">${PHONE_TXT}</a><br><a href="mailto:${EMAIL}">${EMAIL}</a></div>
  <div><b>Follow</b><a href="${IG}" target="_blank" rel="noopener">Instagram</a><br><a href="${FB}" target="_blank" rel="noopener">Facebook</a></div>
 </div>
-<a class="sister" href="https://www.gelatoinfinito.co.za" target="_blank" rel="noopener"><img src="/assets/img/gelato-infinito-white.png" alt="Gelato Infinito" width="117" height="64" loading="lazy"><span class="sis-k">From the same family</span><span class="sis-t">Authentic Italian gelato, slow-churned in small batches at Thesen Harbour Town. The perfect after-lunch stop.</span><span class="sis-go">Visit Gelato Infinito <i>→</i></span></a>
+<a class="sister" href="https://www.gelatoinfinito.co.za" target="_blank" rel="noopener"><img src="/assets/img/gelato-infinito-coral.png" alt="Gelato Infinito" width="117" height="64" loading="lazy"><span class="sis-k">From the same family</span><span class="sis-t">Authentic Italian gelato, slow-churned in small batches at Thesen Harbour Town. The perfect after-lunch stop.</span><span class="sis-go">Visit Gelato Infinito <i>→</i></span></a>
 <p class="credit">Authentic artisans · circa 2002</p></div>`;
 document.body.append(ft);
 const bar=document.createElement("nav");bar.className="bar";bar.setAttribute("aria-label","Quick actions");
