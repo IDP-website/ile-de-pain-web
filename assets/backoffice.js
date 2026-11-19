@@ -638,15 +638,37 @@ function renderSupList(){
   $('#sq').addEventListener('input',deb(()=>{S.sq=$('#sq').value.trim();draw()},150));$('#s-act').onchange=e=>{S.sAll=e.target.checked;draw()};draw()}
 function invRows(L,showSup=true){return L.map(i=>`<tr data-i="${i.id}" class="${i.status==='cancelled'?'cancelled':''}"><td>${fmtD(i.inv_date)}</td>${showSup?`<td><b>${esc(supName(i.supplier_id))}</b></td>`:''}<td>${esc(i.inv_no||'–')}${i.file_path?' <span title="Invoice attached">📎</span>':''}</td><td class="r">${R(i.total)}</td><td class="${isOver(i)?'neg':'muted'}">${i.status==='unpaid'&&i.due_date?fmtD(i.due_date):i.status==='paid'&&i.paid_date?'Paid '+fmtD(i.paid_date):''}</td><td>${invStatus(i)}</td></tr>`).join('')}
 function renderInvList(){
-  const st=S.istat||'';
-  $('#sbody').innerHTML=`<div class="bar"><div class="search"><span>⌕</span><input id="iq" placeholder="Search supplier or invoice number…" autocomplete="off" value="${esc(S.iq||'')}"></div></div>
+  const st=S.istat||'',F=S.if||(S.if={});
+  const sups=[...new Set((S.invs||[]).map(i=>i.supplier_id))].map(id=>[id,supName(id)]).sort((a,b)=>a[1].localeCompare(b[1]));
+  $('#sbody').innerHTML=`<div class="bar"><div class="search"><span>⌕</span><input id="iq" placeholder="Search invoice number, supplier, notes or anything on the invoice (e.g. mozzarella)…" autocomplete="off" value="${esc(S.iq||'')}"></div>
+     <select id="if-s"><option value="">All suppliers</option>${sups.map(([id,n])=>`<option value="${id}" ${F.s==id?'selected':''}>${esc(n)}</option>`).join('')}</select>
+     <label class="chip dt">From <input type="date" id="if-a" value="${F.a||''}"></label><label class="chip dt">To <input type="date" id="if-b" value="${F.b||''}"></label>
+     <span class="chip dt"><input id="if-min" type="number" step="any" inputmode="decimal" placeholder="Min R" value="${F.min??''}"><input id="if-max" type="number" step="any" inputmode="decimal" placeholder="Max R" value="${F.max??''}"></span>
+     <button class="link" id="if-x">Clear</button></div>
    <div class="rcats" id="istat" style="margin-bottom:12px">${[['','All'],['unpaid','Unpaid'],['overdue','Overdue'],['paid','Paid'],['cancelled','Cancelled']].map(([k,v])=>`<button class="${st===k?'on':''}" data-t="${k}">${v}</button>`).join('')}</div>
+   <p class="more" id="isum" style="margin:0 0 8px"></p>
    <div class="tablewrap"><table class="grid" id="t-invs"><thead><tr><th>Date</th><th>Supplier</th><th>Invoice no</th><th class="r">Total incl VAT</th><th>Due / paid</th><th>Status</th></tr></thead><tbody></tbody></table></div>`;
-  const draw=()=>{const q=(S.iq||'').toLowerCase();const L=(S.invs||[]).filter(i=>(st===''?i.status!=='cancelled':st==='overdue'?isOver(i):i.status===st)&&(!q||[supName(i.supplier_id),i.inv_no,i.notes].join(' ').toLowerCase().includes(q)));
-    $('#t-invs tbody').innerHTML=invRows(L)||'<tr><td colspan="6" class="muted">No invoices here yet. Tap “+ Capture invoice” to add one.</td></tr>';
+  let seq=0;
+  const draw=async()=>{const my=++seq;const q=(S.iq||'').trim().toLowerCase();
+    let hits=new Map();
+    if(q.length>=2){const ids=new Set((S.invs||[]).map(i=>i.id));const pat='%'+q.replace(/[%_,()]/g,' ')+'%';
+      const itemIds=S.items.filter(it=>it.name.toLowerCase().includes(q)).map(it=>it.id).slice(0,200);
+      const reqs=[sb.from('bo_invoice_lines').select('invoice_id,description,qty,unit,unit_price,item_id').ilike('description',pat).limit(1000)];
+      if(itemIds.length)reqs.push(sb.from('bo_invoice_lines').select('invoice_id,description,qty,unit,unit_price,item_id').in('item_id',itemIds).limit(1000));
+      const res=await Promise.all(reqs);if(my!==seq)return;
+      for(const r of res)for(const l of (r.data||[]))if(ids.has(l.invoice_id)){const a=hits.get(l.invoice_id)||[];if(!a.some(x=>x.description===l.description&&x.qty==l.qty))a.push(l);hits.set(l.invoice_id,a)}}
+    const L=(S.invs||[]).filter(i=>(st===''?i.status!=='cancelled':st==='overdue'?isOver(i):i.status===st)
+      &&(!F.s||i.supplier_id==F.s)&&(!F.a||i.inv_date>=F.a)&&(!F.b||i.inv_date<=F.b)&&(F.min==null||Number(i.total)>=F.min)&&(F.max==null||Number(i.total)<=F.max)
+      &&(!q||[supName(i.supplier_id),i.inv_no,i.notes,R(i.total)].join(' ').toLowerCase().includes(q)||hits.has(i.id)));
+    const tot=L.reduce((a,i)=>a+Number(i.total||0),0);
+    $('#isum').textContent=`${L.length} invoice${L.length==1?'':'s'} · ${R(tot)} incl VAT`;{const hn=[...hits.keys()].filter(id=>L.some(i=>i.id===id)).length;if(hn)$('#isum').textContent+=` · ${hn} with “${S.iq}” on them`}
+    $('#t-invs tbody').innerHTML=L.slice(0,500).map(i=>{const h=hits.get(i.id);return invRows([i]).replace('</tr>','</tr>'+(h?`<tr class="hitrow" data-i="${i.id}"><td></td><td colspan="5">${h.slice(0,3).map(l=>`<span>${esc(N(l.qty,3))} × ${esc(l.description)}${l.unit_price!=null?' @ '+R(l.unit_price):''}</span>`).join('')}${h.length>3?`<span class="muted">+${h.length-3} more</span>`:''}</td></tr>`:''))}).join('')||'<tr><td colspan="6" class="muted">No invoices match. Try fewer words or clear the filters.</td></tr>';
     $$('#t-invs tr[data-i]').forEach(tr=>tr.onclick=()=>openInvoice(+tr.dataset.i))};
   $$('#istat button').forEach(b=>b.onclick=()=>{S.istat=b.dataset.t;renderInvList()});
-  $('#iq').addEventListener('input',deb(()=>{S.iq=$('#iq').value.trim();draw()},150));draw()}
+  $('#iq').addEventListener('input',deb(()=>{S.iq=$('#iq').value.trim();draw()},250));
+  $('#if-s').onchange=e=>{F.s=e.target.value;draw()};$('#if-a').onchange=e=>{F.a=e.target.value;draw()};$('#if-b').onchange=e=>{F.b=e.target.value;draw()};
+  $('#if-min').oninput=deb(e=>{F.min=e.target.value===''?null:+e.target.value;draw()},250);$('#if-max').oninput=deb(e=>{F.max=e.target.value===''?null:+e.target.value;draw()},250);
+  $('#if-x').onclick=()=>{S.if={};S.iq='';S.istat='';renderInvList()};draw()}
 function renderSupPage(sid){const s=S.supById.get(sid);if(!s){S.supCur=null;return renderSup()}const t=supStats(sid);
   const L=(S.invs||[]).filter(i=>i.supplier_id===sid);const its=S.items.filter(it=>(it.supplier||'').toLowerCase()===s.name.toLowerCase()).sort((a,b)=>a.name.localeCompare(b.name));
   const yr=today().slice(0,4);const spend=L.filter(i=>i.status!=='cancelled'&&String(i.inv_date).startsWith(yr)).reduce((a,i)=>a+Number(i.total||0),0);
