@@ -314,3 +314,4 @@ p.hint.neg{color:var(--bad,#B3261E)}
 @media (max-width:900px){.spgrid{grid-template-columns:1fr}.spcard{position:static}.ivtot{grid-template-columns:1fr 1fr}}
 @media (max-width:700px){.mvl.iv{grid-template-columns:1fr 1fr auto}.mvl.iv .nm{grid-column:1/-1}.mvl.iv .val{grid-column:1/3;text-align:left}}
 .mvt tr.sum td{font-weight:700;color:var(--ink-2)}
+.ivedit{margin-top:14px}.ivedit summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--ink-2)}.ivedit .payrow{margin-top:8px}
