@@ -92,15 +92,17 @@ function renderCompanies(){
 }
 async function switchCo(id){
   S.co=id;localStorage.setItem('bo-co',id);document.documentElement.style.setProperty('--co',co().color);
-  renderCompanies();$('#co-name').textContent=$('#co-name2').textContent=$('#co-name3').textContent=co().name;
+  renderCompanies();$('#co-name').textContent=$('#co-name2').textContent=$('#co-name3').textContent=$('#co-name4').textContent=co().name;
   $('#t-stock tbody').innerHTML='<tr><td colspan="9" class="muted">Loading…</td></tr>';
   try{await load()}catch(e){toast('Could not load: '+e.message);return}
   try{await loadMoves()}catch(e){S.moves=[];toast('Could not load movements: '+e.message)}
+  try{await loadSup()}catch(e){S.sups=[];S.invs=[];S.supById=new Map();toast('Could not load suppliers: '+e.message)}
+  S.supCur=null;
   S.cur=null;$('#seed').classList.toggle('hide',S.items.length>0);fillFilters();renderStock();renderRecipeList();renderRecipe();showTab(S.tab||'stock');
 }
 function showTab(t){S.tab=t;$$('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));S.ed=null;S.tk=null;
-  $('#v-stock').classList.toggle('hide',t!=='stock');$('#v-recipes').classList.toggle('hide',t!=='recipes');$('#v-moves').classList.toggle('hide',t!=='moves');$('#v-mv').classList.add('hide');
-  if(t==='recipes')renderRecipeList();if(t==='moves')renderMoves();if(t==='stock')renderStock()}
+  $('#v-stock').classList.toggle('hide',t!=='stock');$('#v-recipes').classList.toggle('hide',t!=='recipes');$('#v-moves').classList.toggle('hide',t!=='moves');$('#v-sup').classList.toggle('hide',t!=='sup');$('#v-mv').classList.add('hide');
+  if(t==='recipes')renderRecipeList();if(t==='moves')renderMoves();if(t==='sup')renderSup();if(t==='stock')renderStock()}
 $$('#tabs button[data-tab]').forEach(b=>b.onclick=()=>{if(S.ed&&S.ed.dirty&&!confirm('Leave without posting? What you captured will be lost.'))return;showTab(b.dataset.tab)});
 
 // ---------- one-time starting data ----------
@@ -341,7 +343,7 @@ async function importRecipes(e){const f=e.target.files[0];if(!f)return;const msg
   catch(err){msg.textContent='Could not load: '+err.message}e.target.value=''}
 
 // ---------- stock movements ----------
-const TYPES={opening:'Opening stock',stocktake:'Stock take',transfer:'Branch transfer',wastage:'Wastage',manufacture:'Manufacturing'};
+const TYPES={opening:'Opening stock',stocktake:'Stock take',transfer:'Branch transfer',wastage:'Wastage',receive:'Stock received',manufacture:'Manufacturing'};
 const REASONS=['Expired','Spoiled / gone off','Damaged','Dropped or spilled','Over-production','Quality / returned','Staff meal','Tasting / samples','Other'];
 const coName=id=>COS.find(c=>c.id===id)?.name||id||'';
 const ul=it=>!it?'':Number(it.count_size||1)===1?it.count_unit:`${N(it.count_size,3)} ${it.count_unit}`;
@@ -407,7 +409,7 @@ async function openMove(id){const m=S.moves.find(x=>x.id===id)||(await sb.from('
   $('#dr-panel').innerHTML='<p class="muted">Loading…</p>';$('#drawer').classList.remove('hide');$('#dr-panel').classList.add('wide');
   let lines;try{lines=await getLines(id)}catch(e){$('#dr-panel').innerHTML=esc(e.message);return}
   $('#dr-panel').innerHTML=`<span class="eyebrow">${TYPES[m.type]} · ${esc(m.ref)}</span><h2>${m.type==='manufacture'?esc(getRec(m.recipe_id)?.name||'Manufacturing'):TYPES[m.type]}${m.status==='cancelled'?' <span class="tag bad">Cancelled</span>':''}</h2>${metaHtml(m)}${linesTable(m,lines)}
-   <div class="dr-act">${m.status==='done'&&m.type!=='opening'?'<button class="btn danger" id="b-mvx">Cancel this movement</button>':'<span></span>'}<span style="display:flex;gap:8px"><button class="btn" data-close>Close</button><button class="btn fill" id="b-print">Print / Save PDF</button></span></div>`;
+   <div class="dr-act">${m.status==='done'&&m.type==='receive'?'<span class="muted" style="font-size:12.5px">To undo, cancel the invoice under Suppliers.</span>':m.status==='done'&&m.type!=='opening'?'<button class="btn danger" id="b-mvx">Cancel this movement</button>':'<span></span>'}<span style="display:flex;gap:8px"><button class="btn" data-close>Close</button><button class="btn fill" id="b-print">Print / Save PDF</button></span></div>`;
   $('#b-print').onclick=()=>printMove(m,lines);
   $('#b-mvx')&&($('#b-mvx').onclick=async()=>{if(!confirm(`Cancel ${m.ref}? Its stock changes will be undone. It stays in the history as cancelled.`))return;
     const {error}=await sb.rpc('bo_cancel_movement',{mid:m.id});if(error)return toast(error.message);closeDrawer();toast(m.ref+' cancelled');await refreshStock()})}
@@ -420,10 +422,10 @@ function printMove(m,lines){
 async function refreshStock(){await load();await loadMoves();renderStock();renderRecipeList();renderRecipe();renderMoves()}
 
 // ----- editors -----
-function showEditor(title,html,from='moves'){S.edFrom=from;$('#v-moves').classList.add('hide');$('#v-recipes').classList.add('hide');$('#v-mv').classList.remove('hide');
-  $('#v-mv').innerHTML=`<header class="head"><div><button class="link" id="mv-back">← ${from==='recipes'?'Manufacturing':'Stock Movements'}</button><br><span class="eyebrow">${esc(co().name)}</span><h1>${title}</h1></div></header>${html}`;
+function showEditor(title,html,from='moves'){S.edFrom=from;$('#v-moves').classList.add('hide');$('#v-recipes').classList.add('hide');$('#v-sup').classList.add('hide');$('#v-mv').classList.remove('hide');
+  $('#v-mv').innerHTML=`<header class="head"><div><button class="link" id="mv-back">← ${from==='recipes'?'Manufacturing':from==='suppliers'?'Suppliers':'Stock Movements'}</button><br><span class="eyebrow">${esc(co().name)}</span><h1>${title}</h1></div></header>${html}`;
   $('#mv-back').onclick=()=>{if(S.ed&&S.ed.dirty&&!confirm('Leave without posting? What you captured here will be lost.'))return;backToList()};window.scrollTo(0,0)}
-function backToList(){S.ed=null;S.tk=null;$('#v-mv').classList.add('hide');if(S.edFrom==='recipes'){S.rkind='batch';$('#v-recipes').classList.remove('hide');renderRecipeList();renderRecipe()}else{$('#v-moves').classList.remove('hide');renderMoves()}}
+function backToList(){S.ed=null;S.tk=null;$('#v-mv').classList.add('hide');if(S.edFrom==='recipes'){S.rkind='batch';$('#v-recipes').classList.remove('hide');renderRecipeList();renderRecipe()}else if(S.edFrom==='suppliers'){$('#v-sup').classList.remove('hide');renderSup()}else{$('#v-moves').classList.remove('hide');renderMoves()}}
 
 // transfer + wastage
 function openLines(type){
@@ -602,6 +604,189 @@ function finishTake(){const T=S.tk;const g=new Map();for(const l of T.map.values
     if(error){$('#fz-post').disabled=false;return toast('Not posted: '+error.message)}closeDrawer();const id=T.m.id;S.tk=null;await refreshStock();backToList();toast('Stock take posted');openMove(id)}}
 
 $('#b-take').onclick=newTake;$('#b-tr').onclick=()=>openLines('transfer');$('#b-ws').onclick=()=>openLines('wastage')
+
+// ---------- suppliers & invoices ----------
+async function loadSup(){
+  const [sups,invs]=await Promise.all([all('bo_suppliers','*',q=>q.order('name')),all('bo_invoices','*',q=>q.eq('company',S.co).order('inv_date',{ascending:false}))]);
+  S.sups=sups;S.supById=new Map(sups.map(s=>[s.id,s]));S.invs=invs}
+const supName=id=>S.supById?.get(id)?.name||'(supplier)';
+const isOver=i=>i.status==='unpaid'&&i.due_date&&i.due_date<today();
+const addDays=(d,n)=>{const x=new Date(d+'T00:00');x.setDate(x.getDate()+Number(n||0));return x.toISOString().slice(0,10)};
+const invStatus=i=>i.status==='cancelled'?'<span class="tag bad">Cancelled</span>':i.status==='paid'?'<span class="tag ok">Paid</span>':isOver(i)?'<span class="tag bad">Overdue</span>':'<span class="tag warn">Unpaid</span>';
+function supStats(sid){const L=(S.invs||[]).filter(i=>i.supplier_id===sid&&i.status!=='cancelled');
+  return{n:L.length,owed:L.filter(i=>i.status==='unpaid').reduce((a,i)=>a+Number(i.total||0),0),over:L.filter(isOver).reduce((a,i)=>a+Number(i.total||0),0),last:L[0]?.inv_date||null,
+    items:S.items.filter(it=>(it.supplier||'').toLowerCase()===(S.supById.get(sid)?.name||'').toLowerCase()).length}}
+function renderSup(){
+  const L=(S.invs||[]).filter(i=>i.status!=='cancelled');const mon=today().slice(0,7);
+  const owed=L.filter(i=>i.status==='unpaid').reduce((a,i)=>a+Number(i.total||0),0),over=L.filter(isOver);
+  $('#skpis').innerHTML=`<div class="kpi"><span>Suppliers</span><b>${N((S.sups||[]).filter(s=>s.active).length,0)}</b></div><div class="kpi"><span>Invoices this month</span><b>${R(L.filter(i=>String(i.inv_date).startsWith(mon)).reduce((a,i)=>a+Number(i.total||0),0))}</b></div><div class="kpi"><span>Unpaid · owed</span><b>${R(owed)}</b></div><div class="kpi ${over.length?'warn':''}"><span>Overdue</span><b>${over.length?R(over.reduce((a,i)=>a+Number(i.total||0),0)):'None'}</b></div>`;
+  const m=S.smode||'sups';
+  $('#smode').innerHTML=[['sups','Suppliers',`${(S.sups||[]).filter(s=>s.active).length}`,'Contact details, terms and what you owe each one.'],['invs','Invoices',`${L.length}`,'Every captured invoice, paid and unpaid.']].map(([k,t,n,d])=>`<button class="${m===k?'on':''}" data-k="${k}"><b>${t} <small>${n}</small></b><span>${d}</span></button>`).join('');
+  $$('#smode button').forEach(b=>b.onclick=()=>{S.smode=b.dataset.k;S.supCur=null;renderSup()});
+  if(S.supCur)return renderSupPage(S.supCur);
+  if(m==='sups')return renderSupList();renderInvList()}
+function renderSupList(){
+  $('#sbody').innerHTML=`<div class="bar"><div class="search"><span>⌕</span><input id="sq" placeholder="Search suppliers, contacts, phone, email…" autocomplete="off" value="${esc(S.sq||'')}"></div><label class="chip"><input type="checkbox" id="s-act" ${S.sAll?'checked':''}> Show inactive</label></div>
+   <div class="tablewrap"><table class="grid" id="t-sups"><thead><tr><th>Supplier</th><th>Contact</th><th class="r">Items</th><th class="r">Invoices</th><th>Last invoice</th><th class="r">Owed</th></tr></thead><tbody></tbody></table></div><p class="more" id="smore"></p>`;
+  const draw=()=>{const q=(S.sq||'').toLowerCase().split(/\s+/).filter(Boolean);
+    let L=(S.sups||[]).filter(s=>(S.sAll||s.active)&&q.every(w=>[s.name,s.contact_name,s.phone,s.email,s.account_no].join(' ').toLowerCase().includes(w))).map(s=>({s,t:supStats(s.id)}));
+    L.sort((a,b)=>(b.t.owed-a.t.owed)||((b.t.n>0)-(a.t.n>0))||(b.t.items-a.t.items)||a.s.name.localeCompare(b.s.name));
+    $('#t-sups tbody').innerHTML=L.slice(0,300).map(({s,t})=>`<tr data-s="${s.id}" class="${s.active?'':'cancelled'}"><td class="name">${esc(s.name)}${s.vat_registered?'':'<span class="tag">no VAT</span>'}<small>${esc([s.account_no&&'Acc '+s.account_no,s.terms_days!=null&&(s.terms_days?s.terms_days+' days':'COD')].filter(Boolean).join(' · '))}</small></td>
+      <td class="muted">${esc([s.contact_name,s.phone].filter(Boolean).join(' · '))}</td><td class="r">${t.items||''}</td><td class="r">${t.n||''}</td><td class="muted">${t.last?fmtD(t.last):''}</td><td class="r ${t.over?'neg':''}">${t.owed?R(t.owed):''}</td></tr>`).join('')||'<tr><td colspan="6" class="muted">No suppliers match.</td></tr>';
+    $('#smore').textContent=`${L.length} supplier${L.length==1?'':'s'}`;
+    $$('#t-sups tr[data-s]').forEach(tr=>tr.onclick=()=>{S.supCur=+tr.dataset.s;renderSup();window.scrollTo(0,0)})};
+  $('#sq').addEventListener('input',deb(()=>{S.sq=$('#sq').value.trim();draw()},150));$('#s-act').onchange=e=>{S.sAll=e.target.checked;draw()};draw()}
+function invRows(L,showSup=true){return L.map(i=>`<tr data-i="${i.id}" class="${i.status==='cancelled'?'cancelled':''}"><td>${fmtD(i.inv_date)}</td>${showSup?`<td><b>${esc(supName(i.supplier_id))}</b></td>`:''}<td>${esc(i.inv_no||'–')}${i.file_path?' <span title="Invoice attached">📎</span>':''}</td><td class="r">${R(i.total)}</td><td class="${isOver(i)?'neg':'muted'}">${i.status==='unpaid'&&i.due_date?fmtD(i.due_date):i.status==='paid'&&i.paid_date?'Paid '+fmtD(i.paid_date):''}</td><td>${invStatus(i)}</td></tr>`).join('')}
+function renderInvList(){
+  const st=S.istat||'';
+  $('#sbody').innerHTML=`<div class="bar"><div class="search"><span>⌕</span><input id="iq" placeholder="Search supplier or invoice number…" autocomplete="off" value="${esc(S.iq||'')}"></div></div>
+   <div class="rcats" id="istat" style="margin-bottom:12px">${[['','All'],['unpaid','Unpaid'],['overdue','Overdue'],['paid','Paid'],['cancelled','Cancelled']].map(([k,v])=>`<button class="${st===k?'on':''}" data-t="${k}">${v}</button>`).join('')}</div>
+   <div class="tablewrap"><table class="grid" id="t-invs"><thead><tr><th>Date</th><th>Supplier</th><th>Invoice no</th><th class="r">Total incl VAT</th><th>Due / paid</th><th>Status</th></tr></thead><tbody></tbody></table></div>`;
+  const draw=()=>{const q=(S.iq||'').toLowerCase();const L=(S.invs||[]).filter(i=>(st===''?i.status!=='cancelled':st==='overdue'?isOver(i):i.status===st)&&(!q||[supName(i.supplier_id),i.inv_no,i.notes].join(' ').toLowerCase().includes(q)));
+    $('#t-invs tbody').innerHTML=invRows(L)||'<tr><td colspan="6" class="muted">No invoices here yet. Tap “+ Capture invoice” to add one.</td></tr>';
+    $$('#t-invs tr[data-i]').forEach(tr=>tr.onclick=()=>openInvoice(+tr.dataset.i))};
+  $$('#istat button').forEach(b=>b.onclick=()=>{S.istat=b.dataset.t;renderInvList()});
+  $('#iq').addEventListener('input',deb(()=>{S.iq=$('#iq').value.trim();draw()},150));draw()}
+function renderSupPage(sid){const s=S.supById.get(sid);if(!s){S.supCur=null;return renderSup()}const t=supStats(sid);
+  const L=(S.invs||[]).filter(i=>i.supplier_id===sid);const its=S.items.filter(it=>(it.supplier||'').toLowerCase()===s.name.toLowerCase()).sort((a,b)=>a.name.localeCompare(b.name));
+  const yr=today().slice(0,4);const spend=L.filter(i=>i.status!=='cancelled'&&String(i.inv_date).startsWith(yr)).reduce((a,i)=>a+Number(i.total||0),0);
+  $('#sbody').innerHTML=`<div class="sphead"><div><button class="link" id="sp-back">← All suppliers</button><h2>${esc(s.name)}${s.active?'':' <span class="tag">Inactive</span>'}</h2>
+     <p class="muted">${esc([s.contact_name,s.phone,s.email].filter(Boolean).join(' · ')||'No contact details yet')}</p></div>
+     <div class="head-act wrap"><button class="btn" id="sp-edit">Edit details</button><button class="btn fill" id="sp-inv">+ Capture invoice</button></div></div>
+   <div class="kpis"><div class="kpi"><span>Owed</span><b>${R(t.owed)}</b></div><div class="kpi ${t.over?'warn':''}"><span>Overdue</span><b>${t.over?R(t.over):'None'}</b></div><div class="kpi"><span>Spent ${yr} · ${esc(co().name)}</span><b>${R(spend)}</b></div><div class="kpi"><span>Terms</span><b>${s.terms_days?s.terms_days+' days':'COD'}</b></div></div>
+   <div class="spgrid"><div><h3 class="sh">Invoices · ${esc(co().name)}</h3><div class="tablewrap"><table class="grid" id="t-spinv"><thead><tr><th>Date</th><th>Invoice no</th><th class="r">Total</th><th>Due / paid</th><th>Status</th></tr></thead><tbody>${invRows(L,false)||'<tr><td colspan="5" class="muted">No invoices captured yet.</td></tr>'}</tbody></table></div>
+     <h3 class="sh">Items from ${esc(s.name)} <small class="muted">${its.length}</small></h3><div class="tablewrap"><table class="grid" id="t-spit"><thead><tr><th>Item</th><th>Unit</th><th class="r">Price ex VAT</th><th>VAT</th></tr></thead><tbody>${its.map(i=>`<tr data-id="${i.id}"><td class="name">${esc(i.name)}</td><td class="muted">${esc(ul(i))}</td><td class="r">${Number(i.unit_price)>0?R(i.unit_price):'<span class="nil">no price</span>'}</td><td>${i.vat!==false?'VAT':'No VAT'}</td></tr>`).join('')||'<tr><td colspan="4" class="muted">No master stock items list this supplier.</td></tr>'}</tbody></table></div></div>
+    <div class="spcard"><h3 class="sh">Details</h3>${[['Contact',s.contact_name],['Phone',s.phone],['Email',s.email],['Website',s.website],['Address',s.address],['Account no',s.account_no],['VAT',s.vat_registered?('Registered'+(s.vat_no?' · '+s.vat_no:'')):'Not VAT registered'],['Payment terms',s.terms_days?s.terms_days+' days':'COD'],['Banking',s.bank_details],['Used by',(s.businesses||[]).map(coName).join(', ')],['Notes',s.notes]].filter(([,v])=>v).map(([k,v])=>`<div><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div></div>`;
+  $('#sp-back').onclick=()=>{S.supCur=null;renderSup()};$('#sp-edit').onclick=()=>openSupplier(sid);$('#sp-inv').onclick=()=>openInvoiceEd(sid);
+  $$('#t-spinv tr[data-i]').forEach(tr=>tr.onclick=()=>openInvoice(+tr.dataset.i));$$('#t-spit tr[data-id]').forEach(tr=>tr.onclick=()=>openItem(+tr.dataset.id))}
+
+// supplier drawer (add / edit)
+function openSupplier(id,after){
+  const s=id?{...S.supById.get(id)}:{name:'',vat_registered:true,terms_days:30,businesses:COS.map(c=>c.id),active:true};
+  const f=(k,l,t='text',cls='')=>`<label class="${cls}">${l}<input name="${k}" type="${t}" value="${esc(s[k]??'')}"></label>`;
+  $('#dr-panel').classList.remove('wide');$('#dr-panel').innerHTML=`<span class="eyebrow">${id?'Supplier':'New supplier'}</span><h2>${esc(s.name||'New supplier')}</h2>
+  <form id="f-supp"><div class="form">${f('name','Supplier name','text','full')}${f('contact_name','Contact person')}${f('phone','Phone','tel')}${f('email','Email','email')}${f('website','Website')}
+   <label class="full">Address<textarea name="address" rows="2">${esc(s.address||'')}</textarea></label>
+   ${f('account_no','Our account number')}<label>Payment terms<select name="terms_days">${[[0,'COD / on delivery'],[7,'7 days'],[14,'14 days'],[30,'30 days'],[60,'60 days']].concat([0,7,14,30,60].includes(Number(s.terms_days))?[]:[[s.terms_days,s.terms_days+' days']]).map(([v,t])=>`<option value="${v}" ${Number(s.terms_days)===v?'selected':''}>${t}</option>`).join('')}</select></label>
+   <div class="full vatrow"><span>VAT</span><div class="seg2"><label><input type="radio" name="vat_registered" value="1" ${s.vat_registered?'checked':''}><b>VAT registered</b><small>Charges 15% on VAT items</small></label><label><input type="radio" name="vat_registered" value="0" ${s.vat_registered?'':'checked'}><b>Not VAT registered</b><small>No VAT on their invoices</small></label></div></div>
+   ${f('vat_no','VAT number')}<span></span>
+   <label class="full">Banking details<textarea name="bank_details" rows="2">${esc(s.bank_details||'')}</textarea></label>
+   <div class="full"><label>Supplies</label><div class="biz">${COS.map(c=>`<label><input type="checkbox" name="biz" value="${c.id}" ${(s.businesses||[]).includes(c.id)?'checked':''}> ${esc(c.name)}</label>`).join('')}</div></div>
+   <label class="full">Notes<textarea name="notes" rows="2" placeholder="e.g. Order by Wednesday for Friday delivery">${esc(s.notes||'')}</textarea></label>
+   ${id?`<label class="full chip" style="flex-direction:row;gap:8px"><input type="checkbox" name="active" ${s.active?'checked':''}> Active supplier</label>`:''}</div>
+  <div class="dr-act"><span></span><span style="display:flex;gap:8px"><button type="button" class="btn" data-close>Cancel</button><button class="btn fill">Save</button></span></div></form>`;
+  $('#drawer').classList.remove('hide');setTimeout(()=>!id&&$("#f-supp [name=name]").focus(),50);
+  $("#f-supp").onsubmit=async e=>{e.preventDefault();const fd=new FormData(e.target),d=Object.fromEntries(fd);
+    const row={name:d.name.trim(),contact_name:d.contact_name||null,phone:d.phone||null,email:d.email||null,website:d.website||null,address:d.address||null,account_no:d.account_no||null,terms_days:+d.terms_days||0,
+      vat_registered:d.vat_registered!=='0',vat_no:d.vat_no||null,bank_details:d.bank_details||null,businesses:fd.getAll('biz'),notes:d.notes||null,active:id?!!d.active:true,updated_at:new Date().toISOString()};
+    if(!row.name)return toast('Give the supplier a name');
+    const dup=(S.sups||[]).find(x=>x.id!==id&&x.name.toLowerCase()===row.name.toLowerCase());if(dup)return toast(`${dup.name} already exists`);
+    const old=id?S.supById.get(id).name:null;
+    const res=id?await sb.from('bo_suppliers').update(row).eq('id',id).select().single():await sb.from('bo_suppliers').insert(row).select().single();
+    if(res.error)return toast('Not saved: '+res.error.message);
+    if(old&&old!==row.name){const {error}=await sb.from('bo_items').update({supplier:row.name}).eq('supplier',old);if(error)toast(error.message);S.items.forEach(i=>{if(i.supplier===old)i.supplier=row.name});fillFilters()}
+    closeDrawer();await loadSup();toast(id?'Supplier saved':'Supplier added');if(after)return after(res.data);if(!id){S.supCur=res.data.id;S.smode='sups'}renderSup()}}
+
+// invoice drawer
+async function openInvoice(id){const i=S.invs.find(x=>x.id===id);if(!i)return;const s=S.supById.get(i.supplier_id);
+  $('#dr-panel').innerHTML='<p class="muted">Loading…</p>';$('#dr-panel').classList.add('wide');$('#drawer').classList.remove('hide');
+  const {data:lines,error}=await sb.from('bo_invoice_lines').select('*').eq('invoice_id',id).order('sort');if(error){$('#dr-panel').textContent=error.message;return}
+  $('#dr-panel').innerHTML=`<span class="eyebrow">Supplier invoice${i.inv_no?' · '+esc(i.inv_no):''}</span><h2>${esc(s?.name||'')} ${invStatus(i)}</h2>
+   <div class="mvmeta"><div><span>Invoice date</span><b>${fmtD(i.inv_date)}</b></div><div><span>Due</span><b class="${isOver(i)?'neg':''}">${i.due_date?fmtD(i.due_date):'–'}</b></div><div><span>Business</span><b>${esc(coName(i.company))}</b></div><div><span>Captured by</span><b>${esc(whoIs(i.created_by))}</b></div>
+    ${i.status==='paid'?`<div><span>Paid</span><b>${fmtD(i.paid_date)}${i.paid_ref?' · '+esc(i.paid_ref):''}</b></div>`:''}${i.notes?`<div class="full"><span>Notes</span><b>${esc(i.notes)}</b></div>`:''}</div>
+   <table class="mvt"><thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Price ex VAT</th><th class="r">VAT</th><th class="r">Total ex VAT</th></tr></thead><tbody>
+    ${(lines||[]).map(l=>`<tr><td><b>${esc(l.item_id?S.byId.get(l.item_id)?.name||l.description:l.description)}</b>${!l.item_id?'<small>Other charge</small>':l.receive?'':'<small>Not received into stock</small>'}</td><td class="r">${l.qty!=null?N(l.qty,3):''}</td><td>${esc(l.unit||'')}</td><td class="r">${l.unit_price!=null?R(l.unit_price):''}</td><td class="r">${l.vat?R(l.vat_amount):'<span class="muted">No VAT</span>'}</td><td class="r">${R(l.line_total)}</td></tr>`).join('')}
+    <tr class="sum"><td colspan="5">Total excl VAT</td><td class="r">${R(i.subtotal)}</td></tr><tr class="sum"><td colspan="5">VAT</td><td class="r">${R(i.vat)}</td></tr><tr class="tot"><td colspan="5">Total incl VAT</td><td class="r">${R(i.total)}</td></tr></tbody></table>
+   ${i.printed_total!=null&&Math.abs(i.printed_total-i.total)>0.009?`<p class="hint neg">Total printed on the invoice: ${R(i.printed_total)} (difference ${R(i.total-i.printed_total)})</p>`:''}
+   ${i.movement_id?`<p class="hint">Stock received: ${esc(S.moves?.find(m=>m.id===i.movement_id)?.ref||'see Stock Movements')}</p>`:''}
+   <div class="payrow ${i.status==='unpaid'?'':'hide'}" id="iv-pay"><label>Paid on<input type="date" id="iv-pdate" value="${today()}"></label><label class="grow">Payment reference<input id="iv-pref" placeholder="e.g. EFT ref"></label><button class="btn fill" id="iv-paid">Mark as paid</button></div>
+   <div class="dr-act"><span style="display:flex;gap:8px;flex-wrap:wrap">${i.status!=='cancelled'?'<button class="btn danger" id="iv-x">Cancel invoice</button>':''}${i.status==='paid'?'<button class="btn" id="iv-un">Mark as unpaid</button>':''}</span>
+    <span style="display:flex;gap:8px">${i.file_path?'<button class="btn" id="iv-file">View invoice</button>':''}<button class="btn" data-close>Close</button></span></div>`;
+  const upd=async(patch,msg)=>{const {error}=await sb.from('bo_invoices').update({...patch,updated_at:new Date().toISOString()}).eq('id',id);if(error)return toast(error.message);toast(msg);await loadSup();renderSup();openInvoice(id)};
+  $('#iv-paid')&&($('#iv-paid').onclick=()=>upd({status:'paid',paid_date:$('#iv-pdate').value||today(),paid_ref:$('#iv-pref').value||null},'Marked as paid'));
+  $('#iv-un')&&($('#iv-un').onclick=()=>upd({status:'unpaid',paid_date:null,paid_ref:null},'Marked as unpaid'));
+  $('#iv-file')&&($('#iv-file').onclick=async()=>{const w=window.open('','_blank');const {data,error}=await sb.storage.from('bo-invoices').createSignedUrl(i.file_path,600);if(error){w&&w.close();return toast(error.message)}if(w)w.location=data.signedUrl;else location.href=data.signedUrl});
+  $('#iv-x')&&($('#iv-x').onclick=async()=>{if(!confirm(`Cancel this invoice? The stock it received is taken off again, and any prices it raised go back to what they were (unless they've changed since).`))return;
+    const {error}=await sb.rpc('bo_cancel_invoice',{iid:id});if(error)return toast(error.message);closeDrawer();toast('Invoice cancelled');await refreshStock();await loadSup();renderSup()})}
+
+// capture invoice
+function openInvoiceEd(sid){
+  const s0=sid?S.supById.get(sid):null;
+  S.ed={type:'invoice',sid:sid||null,inv_no:'',date:today(),due:s0?addDays(today(),s0.terms_days):addDays(today(),30),dueSet:false,paid:false,incl:false,printed:null,notes:'',file:null,lines:[],dirty:false};
+  const opts=()=>`<option value="">Choose a supplier…</option>${(S.sups||[]).filter(s=>s.active).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}<option value="new">+ New supplier…</option>`;
+  showEditor('Capture supplier invoice',`<div class="mvcard">
+   <div class="mvform"><label class="grow">Supplier<select id="iv-s">${opts()}</select></label><label>Invoice number<input id="iv-no" autocomplete="off"></label>
+    <label>Invoice date<input type="date" id="iv-d" value="${S.ed.date}"></label><label>Due date<input type="date" id="iv-due" value="${S.ed.due}"></label></div>
+   <div class="mvform"><label class="chip"><input type="checkbox" id="iv-incl"> Prices on this invoice include VAT</label><label class="chip"><input type="checkbox" id="iv-pd"> Already paid</label>
+    <label class="filebtn grow"><input type="file" id="iv-f" accept="image/*,application/pdf" hidden><span id="iv-fn">📎 Attach invoice photo or PDF</span></label></div>
+   <div class="addline"><input id="iv-q" placeholder="+ Add item from the master stock (this supplier's items first)…" autocomplete="off"><div class="sug hide" id="iv-sug"></div></div>
+   <div id="iv-lines" class="mvlines"></div>
+   <button class="link" id="iv-other" style="margin-top:10px">+ Add other charge (delivery, deposit, etc.)</button>
+   <div class="ivtot" id="iv-tot"></div>
+   <label style="margin-top:14px">Notes<input id="iv-n" placeholder="e.g. Short delivered 2 × butter, credit note to follow"></label>
+   <div class="mvfoot sticky"><span id="iv-sum"></span><span class="mvbtns"><button class="btn" id="iv-xx">Cancel</button><button class="btn fill" id="iv-post">Save invoice</button></span></div></div>`,'suppliers');
+  const E=S.ed;$('#iv-s').value=sid||'';
+  $('#iv-s').onchange=e=>{const v=e.target.value;if(v==='new'){e.target.value=E.sid||'';return openSupplier(null,ns=>{$('#iv-s').innerHTML=opts();$('#iv-s').value=ns.id;setSup(ns.id)})}setSup(+v||null)};
+  const setSup=id=>{E.sid=id;E.dirty=true;const s=S.supById.get(id);if(s&&!E.dueSet){E.due=addDays(E.date,s.terms_days);$('#iv-due').value=E.due}drawInv()};
+  $('#iv-no').oninput=e=>{E.inv_no=e.target.value;E.dirty=true};
+  $('#iv-d').onchange=e=>{E.date=e.target.value;const s=S.supById.get(E.sid);if(!E.dueSet){E.due=addDays(E.date,s?s.terms_days:30);$('#iv-due').value=E.due}};
+  $('#iv-due').onchange=e=>{E.due=e.target.value;E.dueSet=true};
+  $('#iv-incl').onchange=e=>{E.incl=e.target.checked;drawInv()};$('#iv-pd').onchange=e=>E.paid=e.target.checked;$('#iv-n').oninput=e=>E.notes=e.target.value;
+  $('#iv-f').onchange=e=>{E.file=e.target.files[0]||null;$('#iv-fn').textContent=E.file?'📎 '+E.file.name:'📎 Attach invoice photo or PDF';$('#iv-fn').parentElement.classList.toggle('on',!!E.file)};
+  $('#iv-other').onclick=()=>{E.lines.push({other:true,desc:'',qty:1,price:null,vat:true});E.dirty=true;drawInv();const d=$$('#iv-lines input.desc');d[d.length-1]?.focus()};
+  $('#iv-xx').onclick=()=>$('#mv-back').click();$('#iv-post').onclick=postInvoice;
+  const inp=$('#iv-q'),sug=$('#iv-sug');let res=[],sel=0;
+  const find=q=>{const w=q.toLowerCase().split(/\s+/).filter(Boolean);if(!w.length)return[];const sn=(S.supById.get(E.sid)?.name||'').toLowerCase();
+    const L=S.items.filter(i=>{const h=(i.name+' '+(i.supplier||'')).toLowerCase();return w.every(x=>h.includes(x))});
+    L.sort((a,b)=>(((b.supplier||'').toLowerCase()===sn)-((a.supplier||'').toLowerCase()===sn))||((b.businesses||[]).includes(S.co)-(a.businesses||[]).includes(S.co))||a.name.length-b.name.length);return L.slice(0,25)};
+  const draw=()=>{sug.innerHTML=res.map((i,k)=>`<div class="${k===sel?'on':''}" data-k="${k}"><span>${esc(i.name)}</span><small>${esc(i.supplier||'No supplier')} · ${esc(ul(i))} · ${Number(i.unit_price)>0?R(i.unit_price):'no price'}${i.vat===false?' · no VAT':''}</small></div>`).join('')||`<div><small>No match. Add it to the Master Stock first.</small></div>`;
+    sug.classList.remove('hide');sug.querySelectorAll('[data-k]').forEach(d=>d.onmousedown=ev=>{ev.preventDefault();go(res[+d.dataset.k])})};
+  const go=it=>{if(!it)return;inp.value='';sug.classList.add('hide');E.lines.push({item:it.id,qty:null,price:Number(it.unit_price)>0?Number(it.unit_price):null,receive:true});E.dirty=true;drawInv();const q=$$('#iv-lines input.q');q[q.length-1]?.focus()};
+  inp.addEventListener('input',()=>{res=find(inp.value);sel=0;inp.value.trim()?draw():sug.classList.add('hide')});inp.addEventListener('blur',()=>setTimeout(()=>sug.classList.add('hide'),150));
+  inp.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){sel=Math.min(sel+1,res.length-1);draw();e.preventDefault()}else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);draw();e.preventDefault()}else if(e.key==='Enter'){e.preventDefault();go(res[sel])}});
+  drawInv()}
+function ivCalc(l){const E=S.ed,s=S.supById.get(E.sid);const sv=s?s.vat_registered:true;
+  const vat=sv&&(l.other?l.vat:S.byId.get(l.item)?.vat!==false);const entered=Number(l.price);
+  const ex=l.price==null||l.price===''?null:(E.incl&&vat?entered/1.15:entered);const tot=ex==null||l.qty==null||l.qty===''?null:ex*Number(l.qty);
+  return{vat,ex,tot,va:tot==null?0:vat?tot*0.15:0}}
+function ivTotals(){let sub=0,vat=0;for(const l of S.ed.lines){const c=ivCalc(l);if(c.tot!=null){sub+=c.tot;vat+=c.va}}return{sub,vat,total:sub+vat}}
+function drawInv(){const E=S.ed,box=$('#iv-lines');const s=S.supById.get(E.sid);
+  box.innerHTML=E.lines.length?`<div class="mvl hd iv"><span>Item</span><span class="r">Qty</span><span class="r">Price ${E.incl?'incl':'ex'} VAT</span><span class="r">Line ex VAT</span><span></span></div>`+E.lines.map((l,k)=>{
+    if(l.other)return `<div class="mvl iv" data-k="${k}"><span class="nm"><input class="desc" placeholder="Describe the charge" value="${esc(l.desc)}"><small><label class="inl"><input type="checkbox" class="vt" ${l.vat?'checked':''} ${s&&!s.vat_registered?'disabled':''}> VAT applies</label></small></span><span class="r"><input class="q" type="number" step="any" inputmode="decimal" value="${l.qty??''}"></span><span class="r"><input class="p" type="number" step="any" inputmode="decimal" value="${l.price??''}" placeholder="R"></span><span class="r val"></span><span class="r"><button class="x" title="Remove">×</button></span></div>`;
+    const it=S.byId.get(l.item);
+    return `<div class="mvl iv" data-k="${k}"><span class="nm"><b>${esc(it.name)}</b><small>${esc(ul(it))}${it.vat===false||s&&!s.vat_registered?' · no VAT':''} · now ${Number(it.unit_price)>0?R(it.unit_price):'no price'} <span class="pchg"></span> · <label class="inl"><input type="checkbox" class="rc" ${l.receive?'checked':''}> into stock</label></small></span>
+      <span class="r"><input class="q" type="number" step="any" min="0" inputmode="decimal" value="${l.qty??''}" placeholder="0"><small>${esc(xu(ul(it)))}</small></span><span class="r"><input class="p" type="number" step="any" min="0" inputmode="decimal" value="${l.price??''}" placeholder="R"></span><span class="r val"></span><span class="r"><button class="x" title="Remove">×</button></span></div>`}).join(''):'<div class="empty sm">Choose the supplier, then add each line on the invoice. Quantities are in the item\'s stock unit (e.g. 2 × 25 kg bags = 2).</div>';
+  $$('#iv-lines .mvl[data-k]').forEach(row=>{const l=E.lines[+row.dataset.k];
+    row.querySelector('.q').oninput=e=>{l.qty=e.target.value===''?null:+e.target.value;E.dirty=true;ivNums()};
+    row.querySelector('.p').oninput=e=>{l.price=e.target.value===''?null:+e.target.value;E.dirty=true;ivNums()};
+    row.querySelector('.desc')&&(row.querySelector('.desc').oninput=e=>{l.desc=e.target.value});
+    row.querySelector('.vt')&&(row.querySelector('.vt').onchange=e=>{l.vat=e.target.checked;ivNums()});
+    row.querySelector('.rc')&&(row.querySelector('.rc').onchange=e=>{l.receive=e.target.checked});
+    row.querySelector('.x').onclick=()=>{E.lines.splice(+row.dataset.k,1);drawInv()}});
+  $('#iv-tot').innerHTML=`<div><span>Total excl VAT</span><b id="iv-sub"></b></div><div><span>VAT</span><b id="iv-vat"></b></div><div><span>Total incl VAT</span><b id="iv-total"></b></div>
+    <label><span>Total printed on the invoice</span><input id="iv-pt" type="number" step="any" inputmode="decimal" placeholder="To double-check" value="${E.printed??''}"><small id="iv-diff"></small></label>`;
+  $('#iv-pt').oninput=e=>{E.printed=e.target.value===''?null:+e.target.value;ivNums()};ivNums()}
+function ivNums(){const E=S.ed;
+  $$('#iv-lines .mvl[data-k]').forEach(row=>{const l=E.lines[+row.dataset.k];const c=ivCalc(l);row.querySelector('.val').innerHTML=c.tot!=null?R(c.tot)+(c.vat?'':'<small>no VAT</small>'):'';
+    const pc=row.querySelector('.pchg');if(pc){const it=S.byId.get(l.item),old=Number(it.unit_price)||0;pc.className='pchg';
+      if(c.ex!=null&&old>0&&Math.abs(c.ex-old)>0.004){pc.className='pchg '+(c.ex>old?'up':'dn');pc.textContent=c.ex>old?`▲ price goes up to ${R(c.ex)}`:`▼ lower, keeps ${R(old)}`}else pc.textContent=''}});
+  const T=ivTotals();$('#iv-sub').textContent=R(T.sub);$('#iv-vat').textContent=R(T.vat);$('#iv-total').textContent=R(T.total);
+  const d=E.printed==null?null:T.total-E.printed;$('#iv-diff').textContent=d==null?'':Math.abs(d)<0.01?'✓ Matches':`Difference ${d>0?'+':'−'}${R(Math.abs(d))}`;$('#iv-diff').className=d!=null&&Math.abs(d)>=0.01?'neg':'pos';
+  const n=E.lines.filter(l=>!l.other&&l.receive&&l.qty>0).length;$('#iv-sum').innerHTML=`${E.lines.length} line${E.lines.length==1?'':'s'}${n?` · ${n} into stock`:''} · <b>${R(T.total)}</b> incl VAT`}
+async function postInvoice(){const E=S.ed;const s=S.supById.get(E.sid);if(!s)return toast('Choose the supplier');if(!E.lines.length)return toast('Add the lines on the invoice');
+  const bad=E.lines.filter(l=>l.qty==null||l.qty===''||l.price==null||l.price===''||(l.other&&!l.desc.trim()));if(bad.length)return toast(`${bad.length} line${bad.length>1?'s need':' needs'} a quantity, price${bad.some(l=>l.other)?' or description':''}`);
+  if(E.inv_no&&S.invs.some(i=>i.supplier_id===s.id&&i.status!=='cancelled'&&(i.inv_no||'').toLowerCase()===E.inv_no.trim().toLowerCase())&&!confirm(`Invoice ${E.inv_no} from ${s.name} has already been captured. Capture it again?`))return;
+  const T=ivTotals();if(E.printed!=null&&Math.abs(T.total-E.printed)>=0.01&&!confirm(`The lines add up to ${R(T.total)} but the invoice says ${R(E.printed)}. Save anyway?`))return;
+  $('#iv-post').disabled=true;let file_path=null,file_name=null;
+  if(E.file){file_name=E.file.name;file_path=`${S.co}/${s.id}/${Date.now()}-${E.file.name.replace(/[^\w.\-]+/g,'_')}`;
+    const up=await sb.storage.from('bo-invoices').upload(file_path,E.file,{contentType:E.file.type||undefined});if(up.error){$('#iv-post').disabled=false;return toast('Could not upload the file: '+up.error.message)}}
+  const lines=E.lines.map(l=>{const c=ivCalc(l);const it=l.other?null:S.byId.get(l.item);
+    return{item_id:it?it.id:null,description:it?it.name:l.desc.trim(),qty:Number(l.qty),unit:it?ul(it):null,unit_price:+c.ex.toFixed(4),vat:c.vat,line_total:+c.tot.toFixed(2),vat_amount:+c.va.toFixed(2),receive:it?!!l.receive:false}});
+  const {data:id,error}=await sb.rpc('bo_post_invoice',{p:{invoice:{supplier_id:s.id,company:S.co,inv_no:E.inv_no.trim(),inv_date:E.date,due_date:E.paid?null:E.due,subtotal:+T.sub.toFixed(2),vat:+T.vat.toFixed(2),total:+T.total.toFixed(2),printed_total:E.printed,status:E.paid?'paid':'unpaid',paid_date:E.paid?E.date:null,file_path,file_name,notes:E.notes},lines}});
+  if(error){$('#iv-post').disabled=false;return toast('Not saved: '+error.message)}
+  const up=E.lines.filter(l=>{if(l.other)return false;const c=ivCalc(l),o=Number(S.byId.get(l.item).unit_price)||0;return c.ex>o+0.004}).length;
+  toast(`Invoice saved${lines.some(l=>l.receive&&l.qty)?' · stock received':''}${up?` · ${up} price${up>1?'s':''} raised`:''}`);S.ed=null;await refreshStock();await loadSup();backToList();openInvoice(id)}
+$('#b-inv').onclick=()=>openInvoiceEd(S.supCur||null);$('#b-sup').onclick=()=>openSupplier(null);
 
 boot();
 })();

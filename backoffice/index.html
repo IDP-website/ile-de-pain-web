@@ -34,6 +34,7 @@
       <button data-tab="stock" class="on"><i>▦</i>Master Stock</button>
       <button data-tab="recipes"><i>✎</i>Recipes</button>
       <button data-tab="moves"><i>⇄</i>Stock Movements</button>
+      <button data-tab="sup"><i>⌂</i>Suppliers</button>
     </nav>
     <div class="side-foot"><span id="who"></span><button id="b-out" class="link">Sign out</button></div>
   </aside>
@@ -89,6 +90,16 @@
       <div class="rcats" id="mtypes" style="margin-bottom:12px"></div>
       <div class="tablewrap"><table class="grid" id="t-moves">
         <thead><tr><th>Date</th><th>Ref</th><th>Type</th><th>Details</th><th class="r">Value</th><th>By</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <!-- SUPPLIERS -->
+    <section id="v-sup" class="hide">
+      <header class="head">
+        <div><span class="eyebrow" id="co-name4"></span><h1>Suppliers</h1></div>
+        <div class="head-act wrap"><button class="btn fill" id="b-inv">+ Capture invoice</button><button class="btn" id="b-sup">+ Add supplier</button></div>
+      </header>
+      <div class="kpis" id="skpis"></div>
+      <div class="rmode" id="smode"></div>
+      <div id="sbody"></div>
     </section>
     <section id="v-mv" class="hide"></section>
   </main>
