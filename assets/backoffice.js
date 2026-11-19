@@ -46,7 +46,7 @@ function lineCost(l,depth=0){
   return{cost:null,why:'Not linked to the master stock yet'};
 }
 function recipeNums(r){
-  const {total,issues}=recipeCost(r);const per=['portion','each'].includes(r.yield_unit)?total/(r.yield_qty||1):null;
+  const {total,issues}=recipeCost(r);const per=r.kind==='menu'?total:['portion','each'].includes(r.yield_unit)?total/(r.yield_qty||1):null;
   const sellEx=r.selling_price?Number(r.selling_price)/1.15:null;
   const gp=per!=null&&sellEx?(sellEx-per)/sellEx:null;return{total,issues,per,sellEx,gp};
 }
@@ -96,7 +96,7 @@ async function switchCo(id){
   $('#t-stock tbody').innerHTML='<tr><td colspan="9" class="muted">Loading…</td></tr>';
   try{await load()}catch(e){toast('Could not load: '+e.message);return}
   try{await loadMoves()}catch(e){S.moves=[];toast('Could not load movements: '+e.message)}
-  S.cur=null;$('#seed').classList.toggle('hide',S.items.length>0);fillFilters();renderStock();renderRecipeList();renderRecipe();if(S.tab==='moves'||!$('#v-mv').classList.contains('hide'))showTab('moves');
+  S.cur=null;$('#seed').classList.toggle('hide',S.items.length>0);fillFilters();renderStock();renderRecipeList();renderRecipe();showTab(S.tab||'stock');
 }
 function showTab(t){S.tab=t;$$('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab===t));S.ed=null;S.tk=null;
   $('#v-stock').classList.toggle('hide',t!=='stock');$('#v-recipes').classList.toggle('hide',t!=='recipes');$('#v-moves').classList.toggle('hide',t!=='moves');$('#v-mv').classList.add('hide');
@@ -206,25 +206,29 @@ async function openItem(id){
 }
 
 // ---------- recipes ----------
-const cats=()=>[...new Set(S.recipes.filter(r=>!S.rkind||r.kind===S.rkind).map(r=>r.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+const cats=()=>[...new Set(S.recipes.filter(r=>r.kind===rk()).map(r=>r.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+const rk=()=>S.rkind==='batch'?'batch':'menu';
 function renderRecipeList(){
-  $('#rkind').innerHTML=[['','All'],['menu','Menu items'],['batch','Batch']].map(([k,v])=>`<button class="${(S.rkind||'')===k?'on':''}" data-k="${k}">${v} <small>${k?S.recipes.filter(r=>r.kind===k).length:S.recipes.length}</small></button>`).join('');
-  $$('#rkind button').forEach(b=>b.onclick=()=>{S.rkind=b.dataset.k;S.rcat='';renderRecipeList()});
+  const k=rk();
+  $('#rmode').innerHTML=[['menu','Menu items','Dishes that are ordered. Costed per item.'],['batch','Manufacturing','Made in bulk. Yield, wastage and batch history.']].map(([v,t,d])=>`<button class="${k===v?'on':''}" data-k="${v}"><b>${t} <small>${S.recipes.filter(r=>r.kind===v).length}</small></b><span>${d}</span></button>`).join('');
+  $$('#rmode button').forEach(b=>b.onclick=()=>{if(b.dataset.k===k)return;S.rkind=b.dataset.k;S.rcat='';S.cur=k==='menu'?'hist':null;renderRecipeList();renderRecipe()});
+  $('#b-newr').classList.toggle('hide',k!=='menu');$('#b-newb').classList.toggle('hide',k!=='batch');$('#b-mk').classList.toggle('hide',k!=='batch');
   $('#rcats').innerHTML=['All',...cats(),'To check'].map(c=>`<button class="${(S.rcat||'All')===c?'on':''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
   $$('#rcats button').forEach(b=>b.onclick=()=>{S.rcat=b.dataset.c==='All'?'':b.dataset.c;renderRecipeList()});
   const q=$('#rq').value.trim().toLowerCase();
-  const L=S.recipes.filter(r=>(!S.rkind||r.kind===S.rkind)&&(!S.rcat||(S.rcat==='To check'?r.needs_check:r.category===S.rcat))&&(!q||r.name.toLowerCase().includes(q)));
-  $('#rlist').innerHTML=L.map(r=>{const n=recipeNums(r);const sub=n.per!=null?`${R(n.per)} per ${esc(r.yield_unit)}`:`${R(n.total)} per batch`;
-    return `<div class="ritem ${S.cur===r.id?'on':''}" data-id="${r.id}"><div><b>${r.needs_check?'<span title="Needs checking">⚑ </span>':''}${esc(r.name)}</b><small><span class="kt ${r.kind}">${r.kind==='batch'?'Batch':'Menu'}</span> ${esc(r.category||'')} · ${sub}${r.kind==='batch'&&S.made?.get(r.id)?` · ${N(S.made.get(r.id),3)} in stock`:''}${n.issues?` · ${n.issues} to link`:''}</small></div>${r.selling_price?gpTag(n.gp):''}</div>`}).join('')
+  const L=S.recipes.filter(r=>r.kind===k&&(!S.rcat||(S.rcat==='To check'?r.needs_check:r.category===S.rcat))&&(!q||r.name.toLowerCase().includes(q)));
+  $('#rlist').innerHTML=L.map(r=>{const n=recipeNums(r);const sub=k==='menu'?`${R(n.total)} per item`:`Yield ${N(r.yield_qty,3)} ${esc(r.yield_unit)} · `+(n.per!=null?`${R(n.per)} per ${esc(r.yield_unit)}`:`${R(n.total)} per batch`);
+    return `<div class="ritem ${S.cur===r.id?'on':''}" data-id="${r.id}"><div><b>${r.needs_check?'<span title="Needs checking">⚑ </span>':''}${esc(r.name)}</b><small>${esc(r.category||'')} · ${sub}${r.kind==='batch'&&S.made?.get(r.id)?` · ${N(S.made.get(r.id),3)} in stock`:''}${n.issues?` · ${n.issues} to link`:''}</small></div>${r.selling_price?gpTag(n.gp):''}</div>`}).join('')
     ||'<p class="muted" style="padding:14px">No recipes here yet.</p>';
+  if(k==='batch'){const n=(S.moves||[]).filter(m=>m.type==='manufacture'&&m.company===S.co).length;$('#rlist').insertAdjacentHTML('afterbegin',`<div class="ritem hist ${S.cur==='hist'?'on':''}" data-hist><div><b>▤ Batch history</b><small>${n} batch${n==1?'':'es'} made · yield, wastage and cost</small></div></div>`)}
   $('#rlist').insertAdjacentHTML('beforeend',`<p style="padding:10px 10px 4px"><label class="link" style="display:inline;color:var(--ink-2)">Import recipes from file<input type="file" id="rimp" accept=".json" hidden></label> <span id="rimp-msg" class="saved"></span></p>`);
   $('#rimp').addEventListener('change',importRecipes);
-  $$('.ritem').forEach(d=>d.onclick=()=>{S.cur=Number(d.dataset.id);S.link=null;renderRecipeList();renderRecipe()});
+  $$('.ritem').forEach(d=>d.onclick=()=>{S.cur=d.dataset.hist!=null?'hist':Number(d.dataset.id);S.link=null;renderRecipeList();renderRecipe()});
 }
-$('#rq').addEventListener('input',deb(renderRecipeList,120));
+$('#rq').addEventListener('input',deb(()=>{renderRecipeList();if(S.cur==='hist')renderRecipe()},120));
 const newRecipe=async kind=>{const {data,error}=await sb.from('bo_recipes').insert({company:S.co,kind,name:kind==='menu'?'New menu item':'New batch recipe',category:(S.rcat&&S.rcat!=='To check')?S.rcat:kind==='menu'?'Mains':'Kitchen prep',yield_qty:kind==='menu'?1:10,yield_unit:'portion'}).select().single();
-  if(error)return toast(error.message);S.recipes.push(data);S.recById?.set(data.id,data);S.rkind='';S.cur=data.id;renderRecipeList();renderRecipe();setTimeout(()=>{const n=$('.rname');n.focus();n.select()},50)};
-$('#b-newr').onclick=()=>newRecipe('menu');$('#b-newb').onclick=()=>newRecipe('batch');
+  if(error)return toast(error.message);S.recipes.push(data);S.recById?.set(data.id,data);S.rkind=kind;S.cur=data.id;renderRecipeList();renderRecipe();setTimeout(()=>{const n=$('.rname');n.focus();n.select()},50)};
+$('#b-newr').onclick=()=>newRecipe('menu');$('#b-newb').onclick=()=>newRecipe('batch');$('#b-mk').onclick=()=>openMake(typeof S.cur==='number'&&getRec(S.cur)?.kind==='batch'?S.cur:null);
 const saveRecipe=deb(async(r)=>{const {error}=await sb.from('bo_recipes').update({name:r.name,category:r.category,yield_qty:r.yield_qty,yield_unit:r.yield_unit,selling_price:r.selling_price,notes:r.notes,method:r.method,needs_check:r.needs_check,kind:r.kind,updated_at:new Date().toISOString()}).eq('id',r.id);
   $('#rsaved')&&($('#rsaved').textContent=error?'Not saved: '+error.message:'Saved');renderRecipeList()},600);
 function unitCostLabel(l,it,sr){
@@ -233,7 +237,8 @@ function unitCostLabel(l,it,sr){
   return '';
 }
 function renderRecipe(){
-  const r=S.recipes.find(x=>x.id===S.cur);const box=$('#redit');
+  const box=$('#redit');if(S.cur==='hist'&&rk()==='batch')return renderBatchHistory(box);
+  const r=S.recipes.find(x=>x.id===S.cur&&x.kind===rk());
   if(!r){box.innerHTML='<div class="empty">Pick a recipe on the left, or create a new one.<br><br>Ingredients come straight from the Master Stock, so costs stay up to date.</div>';return}
   const lines=S.lines.filter(l=>l.recipe_id===r.id).sort((a,b)=>a.sort-b.sort);let lastSec=null;
   const rows=lines.map(l=>{const it=l.item_id?S.byId.get(l.item_id):null,sr=l.sub_recipe_id?S.recipes.find(x=>x.id===l.sub_recipe_id):null,c=lineCost(l);
@@ -246,12 +251,11 @@ function renderRecipe(){
       <td><select data-f="unit">${units.map(u=>`<option ${u===l.unit?'selected':''}>${u}</option>`).join('')}</select></td>
       <td class="r muted">${unitCostLabel(l,it,sr)}</td><td class="r">${c.free?'<span class="muted">–</span>':c.cost!=null?(c.approx?'<span title="Converted at 1 ml ≈ 1 g">≈ </span>':'')+R(c.cost):`<span class="nil" title="${esc(c.why)}">⚠ ${esc(c.why)}</span>`}</td><td class="r"><button class="x" data-del="${l.id}" title="Remove">×</button></td></tr>`}).join('');
   const bt=r.kind==='batch';
-  box.innerHTML=`<div class="rkindsel"><span>Recipe type</span><div class="seg"><button data-kind="menu" class="${!bt?'on':''}"><b>Menu item</b><small>A dish or item that's ordered. Uses these ingredients each time it's sold.</small></button><button data-kind="batch" class="${bt?'on':''}"><b>Batch recipe</b><small>Made in bulk ahead of time (e.g. a lasagna tray, dough, sauce). Manufactured into stock.</small></button></div></div>
-   <div class="rhead">
+  box.innerHTML=`<div class="rhead">
     <label class="rn">Recipe name<input class="rname" id="r-name" value="${esc(r.name)}"></label>
     <label>Category<input id="r-cat" list="catlist" value="${esc(r.category||'')}"><datalist id="catlist">${cats().map(c=>`<option>${esc(c)}</option>`).join('')}</datalist></label>
-    <label>${bt?'Yield per batch':'Yield (portions served)'}<span style="display:flex;gap:6px"><input id="r-yq" type="number" step="any" value="${esc(r.yield_qty??1)}" style="width:55%"><select id="r-yu" style="width:45%">${YUNITS.map(u=>`<option ${u===r.yield_unit?'selected':''}>${u}</option>`).join('')}</select></span></label>
-    <label>Selling price incl VAT<input id="r-sp" type="number" step="any" placeholder="R" value="${esc(r.selling_price??'')}"></label>
+    ${bt?`<label>Portion yield per batch<span style="display:flex;gap:6px"><input id="r-yq" type="number" step="any" value="${esc(r.yield_qty??1)}" style="width:55%"><select id="r-yu" style="width:45%">${YUNITS.map(u=>`<option ${u===r.yield_unit?'selected':''}>${u}</option>`).join('')}</select></span></label>`:''}
+    <label>${bt?'Selling price per '+esc(r.yield_unit)+' incl VAT':'Selling price incl VAT'}<input id="r-sp" type="number" step="any" placeholder="R" value="${esc(r.selling_price??'')}"></label>
     <label>&nbsp;<span class="saved" id="rsaved">Saves automatically</span></label></div>
    ${r.yield_text||r.needs_check?`<div class="rinfo">${r.yield_text?`<span>Batch as written: <b>${esc(r.yield_text)}</b></span>`:''}${r.needs_check?`<span class="flag">⚑ Needs checking <button class="link" id="b-checked">Mark as checked</button></span>`:''}</div>`:''}
    <table class="lines"><thead><tr><th>Ingredient</th><th class="r">Qty</th><th>Unit</th><th class="r">Unit cost</th><th class="r">Line cost</th><th></th></tr></thead><tbody>${rows}</tbody></table>
@@ -260,14 +264,15 @@ function renderRecipe(){
    <label style="margin-top:16px">Method<textarea id="r-method" rows="${Math.min(14,Math.max(3,(r.method||'').split('\n').length+1))}">${esc(r.method||'')}</textarea></label>
    <label style="margin-top:10px">Notes<textarea id="r-notes" rows="2">${esc(r.notes||'')}</textarea></label>
    ${r.source?`<p class="saved" style="margin-top:8px">Source: ${esc(r.source)}</p>`:''}
-   <div class="dr-act"><button class="btn danger" id="b-delr">Delete recipe</button><span style="display:flex;gap:8px"><button class="btn" id="b-dup">Duplicate</button>${bt?'<button class="btn fill" id="b-make">Manufacture a batch</button>':''}</span></div>
-   ${bt?'':'<p class="hint">Menu items come out of stock when they are sold, once sales from the till are linked up. To use a batch you made (e.g. a portion of lasagna), add the batch recipe as an ingredient.</p>'}`;
+   <div class="dr-act"><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn danger" id="b-delr">Delete recipe</button><button class="btn" id="b-mv">${bt?'Move to Menu items':'Move to Manufacturing'}</button></span><span style="display:flex;gap:8px"><button class="btn" id="b-dup">Duplicate</button>${bt?'<button class="btn fill" id="b-make">Manufacture a batch</button>':''}</span></div>
+   <p class="hint">${bt?'Batch recipes are made in bulk ahead of time. Use “Manufacture a batch” to take the ingredients out of stock and put the yield (after any wastage) into stock.':'Menu items have no yield. Each ingredient line is what goes into one item, and it comes out of stock per item sold, once sales from the till are linked up. To use something you made (e.g. a portion of lasagna), add the batch recipe as an ingredient.'}</p>`;
   renderTotals(r);
-  $('#b-make')&&($('#b-make').onclick=()=>{showTab('moves');openMake(r.id)});
-  $$('.rkindsel [data-kind]').forEach(b=>b.onclick=()=>{if(r.kind===b.dataset.kind)return;r.kind=b.dataset.kind;saveRecipe(r);renderRecipe();toast(r.kind==='batch'?'Now a batch recipe':'Now a menu item')});
-  const upd=()=>{r.name=$('#r-name').value;r.category=$('#r-cat').value.trim()||null;r.yield_qty=+$('#r-yq').value||1;r.yield_unit=$('#r-yu').value;r.selling_price=$('#r-sp').value===''?null:+$('#r-sp').value;r.notes=$('#r-notes').value;r.method=$('#r-method').value;
+  $('#b-make')&&($('#b-make').onclick=()=>openMake(r.id));
+  $('#b-mv').onclick=()=>{const to=bt?'menu':'batch';if(to==='menu'&&Number(r.yield_qty)!==1&&!confirm(`Menu items have no yield, so "${r.name}" will be costed as one item using all its ingredient lines (it makes ${N(r.yield_qty,3)} ${r.yield_unit} now). Move it?`))return;
+    r.kind=to;if(to==='menu'){r.yield_qty=1;r.yield_unit='portion'}saveRecipe(r);S.rkind=to;renderRecipeList();renderRecipe();toast(to==='batch'?'Moved to Manufacturing':'Moved to Menu items')};
+  const upd=()=>{r.name=$('#r-name').value;r.category=$('#r-cat').value.trim()||null;if(bt){r.yield_qty=+$('#r-yq').value||1;r.yield_unit=$('#r-yu').value}else{r.yield_qty=1;r.yield_unit='portion'}r.selling_price=$('#r-sp').value===''?null:+$('#r-sp').value;r.notes=$('#r-notes').value;r.method=$('#r-method').value;
     $('#rsaved').textContent='Saving…';renderTotals(r);saveRecipe(r)};
-  ['#r-name','#r-yq','#r-sp','#r-notes','#r-method','#r-cat'].forEach(x=>$(x).addEventListener('input',upd));$('#r-yu').addEventListener('change',upd);
+  ['#r-name','#r-yq','#r-sp','#r-notes','#r-method','#r-cat'].forEach(x=>$(x)?.addEventListener('input',upd));$('#r-yu')?.addEventListener('change',upd);
   $('#b-checked')&&($('#b-checked').onclick=()=>{r.needs_check=false;upd();renderRecipe()});
   $$('.lines tr[data-l]').forEach(tr=>{const l=S.lines.find(x=>x.id==tr.dataset.l);
     tr.querySelectorAll('[data-f]').forEach(inp=>inp.addEventListener('change',async()=>{l[inp.dataset.f]=inp.dataset.f==='qty'?(inp.value===''?null:+inp.value):inp.value;
@@ -280,8 +285,23 @@ function renderRecipe(){
     S.recipes.push(data);S.cur=data.id;renderRecipeList();renderRecipe();toast('Recipe duplicated')};
   setupSearch(r);
 }
-function renderTotals(r){const n=recipeNums(r);const fc=n.per!=null&&n.sellEx?n.per/n.sellEx:null;
-  $('#tot').innerHTML=`<div><span>Recipe cost</span><b>${R(n.total)}</b></div><div><span>Cost per ${esc(r.yield_unit)}</span><b>${n.per!=null?R(n.per):'–'}</b></div><div><span>Selling ex VAT</span><b>${n.sellEx?R(n.sellEx):'–'}</b></div><div><span>Food cost %</span><b>${fc!=null?Math.round(fc*100)+'%':'–'}</b></div><div><span>Gross profit</span><b>${n.gp!=null?Math.round(n.gp*100)+'%':'–'}</b></div><div><span>In stock (made)</span><b>${N(S.made?.get(r.id)||0,3)} <small style="font-size:12px">${esc(r.yield_unit)}</small></b></div>`+(n.issues?`<div style="grid-column:1/-1;background:var(--warn-bg);color:var(--warn)"><span style="color:inherit">${n.issues} ingredient line${n.issues>1?'s':''} can't be costed yet (see ⚠ above). The total leaves them out.</span></div>`:'')}
+function renderTotals(r){const n=recipeNums(r);const fc=n.per!=null&&n.sellEx?n.per/n.sellEx:null;const bt=r.kind==='batch';
+  const c=(l,v)=>`<div><span>${l}</span><b>${v}</b></div>`;
+  $('#tot').innerHTML=(bt?c('Batch cost',R(n.total))+c('Cost per '+esc(r.yield_unit),n.per!=null?R(n.per):'–'):c('Cost per item',R(n.total)))
+    +c('Selling ex VAT',n.sellEx?R(n.sellEx):'–')+c('Food cost %',fc!=null?Math.round(fc*100)+'%':'–')+c('Gross profit',n.gp!=null?Math.round(n.gp*100)+'%':'–')
+    +(bt?c('In stock (made)',`${N(S.made?.get(r.id)||0,3)} <small style="font-size:12px">${esc(r.yield_unit)}</small>`):'')
+    +(n.issues?`<div style="grid-column:1/-1;background:var(--warn-bg);color:var(--warn)"><span style="color:inherit">${n.issues} ingredient line${n.issues>1?'s':''} can't be costed yet (see ⚠ above). The total leaves them out.</span></div>`:'')}
+function renderBatchHistory(box){
+  const q=($('#rq').value||'').trim().toLowerCase();
+  const L=(S.moves||[]).filter(m=>m.type==='manufacture'&&m.company===S.co&&(!q||[m.ref,m.notes,getRec(m.recipe_id)?.name].join(' ').toLowerCase().includes(q)));
+  const mon=today().slice(0,7),thisM=L.filter(m=>m.status==='done'&&String(m.mdate).startsWith(mon));
+  const wv=m=>m.waste_qty&&m.expected_qty?Number(m.total_value||0)/Number(m.expected_qty)*Number(m.waste_qty):0;
+  box.innerHTML=`<div class="hhead"><h2>Batch history</h2><button class="btn fill" id="bh-mk">Manufacture a batch</button></div>
+   <div class="kpis sm"><div class="kpi"><span>Batches this month</span><b>${thisM.length}</b></div><div class="kpi"><span>Made this month</span><b>${R(thisM.reduce((a,m)=>a+Number(m.total_value||0),0))}</b></div><div class="kpi ${thisM.some(m=>m.waste_qty>0)?'warn':''}"><span>Production wastage this month</span><b>${R(thisM.reduce((a,m)=>a+wv(m),0))}</b></div></div>
+   <div class="tablewrap"><table class="grid" id="t-batch"><thead><tr><th>Date</th><th>Ref</th><th>Recipe</th><th class="r">Batches</th><th class="r">Yield</th><th class="r">Wastage</th><th class="r">Batch cost</th><th class="r">Per unit</th><th>Status</th></tr></thead><tbody>
+   ${L.map(m=>`<tr data-m="${m.id}" class="${m.status}"><td>${fmtD(m.mdate)}</td><td><b>${esc(m.ref||'')}</b></td><td>${esc(getRec(m.recipe_id)?.name||'Recipe')}</td><td class="r">${N(m.batches)}</td><td class="r">${N(m.yield_qty,3)} <small class="muted">${esc(m.yield_unit||'')}</small></td><td class="r ${m.waste_qty>0?'neg':'muted'}">${m.waste_qty>0?N(m.waste_qty,3)+(m.waste_reason?`<small>${esc(m.waste_reason)}</small>`:''):'–'}</td><td class="r">${R(m.total_value)}</td><td class="r">${m.yield_qty>0?R(m.total_value/m.yield_qty):'–'}</td><td>${m.status==='cancelled'?'<span class="tag bad">Cancelled</span>':'<span class="tag ok">Done</span>'}</td></tr>`).join('')||'<tr><td colspan="9" class="muted">No batches made yet. Pick a batch recipe and tap “Manufacture a batch”.</td></tr>'}</tbody></table></div>`;
+  $('#bh-mk').onclick=()=>openMake(null);
+  $$('#t-batch tr[data-m]').forEach(tr=>tr.onclick=()=>openMove(+tr.dataset.m))}
 function setupSearch(r){
   const inp=$('#addq'),sug=$('#sug');let res=[],sel=0;
   const run=()=>{const q=inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);if(!q.length){sug.classList.add('hide');return}
@@ -350,13 +370,13 @@ function mvDetail(m){
   return esc(m.notes||'')}
 function renderMoves(){
   const q=(S.mq||'').toLowerCase();
-  const L=(S.moves||[]).filter(m=>(!S.mtype||m.type===S.mtype)&&(!q||[m.ref,m.notes,TYPES[m.type],coName(m.to_company),coName(m.company),getRec(m.recipe_id)?.name].join(' ').toLowerCase().includes(q)));
+  const L=(S.moves||[]).filter(m=>m.type!=='manufacture'&&(!S.mtype||m.type===S.mtype)&&(!q||[m.ref,m.notes,TYPES[m.type],coName(m.to_company),coName(m.company),getRec(m.recipe_id)?.name].join(' ').toLowerCase().includes(q)));
   let iv=0;for(const [id,c] of S.cnt){const it=S.byId.get(id);if(it&&c>0)iv+=c*(Number(it.unit_price)||0)}
   let mv=0;for(const [id,c] of S.made)if(c>0)mv+=c*rUnit(getRec(id));
   const mon=today().slice(0,7);const waste=(S.moves||[]).filter(m=>m.type==='wastage'&&m.status==='done'&&m.company===S.co&&String(m.mdate).startsWith(mon)).reduce((a,m)=>a+Math.abs(Number(m.total_value)||0),0);
   const lt=(S.moves||[]).find(m=>m.type==='stocktake'&&m.status==='done'&&m.company===S.co);
   $('#mkpis').innerHTML=`<div class="kpi"><span>Stock on hand now</span><b>${R(iv)}</b></div><div class="kpi"><span>Made items on hand</span><b>${R(mv)}</b></div><div class="kpi ${waste?'warn':''}"><span>Wastage this month</span><b>${R(waste)}</b></div><div class="kpi"><span>Last stock take</span><b>${lt?fmtD(lt.mdate):'None yet'}</b></div>`;
-  $('#mtypes').innerHTML=[['','All'],...Object.entries(TYPES)].map(([k,v])=>`<button class="${(S.mtype||'')===k?'on':''}" data-t="${k}">${v}</button>`).join('');
+  $('#mtypes').innerHTML=[['','All'],...Object.entries(TYPES).filter(([k])=>k!=='manufacture')].map(([k,v])=>`<button class="${(S.mtype||'')===k?'on':''}" data-t="${k}">${v}</button>`).join('');
   $$('#mtypes button').forEach(b=>b.onclick=()=>{S.mtype=b.dataset.t;renderMoves()});
   $('#t-moves tbody').innerHTML=L.map(m=>`<tr data-m="${m.id}" class="${m.status}"><td>${fmtD(m.mdate)}</td><td><b>${esc(m.ref||'')}</b></td><td><span class="pill t-${m.type}">${TYPES[m.type]}</span></td><td class="det">${mvDetail(m)}</td><td class="r">${m.status==='draft'?'':mvValue(m)}</td><td class="muted">${esc(whoIs(m.created_by))}</td><td>${m.status==='draft'?'<span class="tag">Draft</span>':m.status==='cancelled'?'<span class="tag bad">Cancelled</span>':'<span class="tag ok">Done</span>'}</td></tr>`).join('')||'<tr><td colspan="7" class="muted">Nothing here yet.</td></tr>';
   $$('#t-moves tr[data-m]').forEach(tr=>tr.onclick=()=>{const m=S.moves.find(x=>x.id==tr.dataset.m);if(m.type==='stocktake'&&m.status==='draft'&&m.company===S.co)openTake(m.id);else openMove(m.id)});
@@ -373,7 +393,8 @@ function linesTable(m,lines){
     return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Counted</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">Value</th></tr></thead><tbody>${rows.map(o=>`<tr><td><b>${esc(lname(o.l))}</b><small>${esc(o.l.unit||'')}${o.areas.length?' · '+esc([...new Set(o.areas)].join(', ')):''}</small></td><td class="r">${N(o.c,3)}</td><td class="r">${o.e==null?'–':N(o.e,3)}</td><td class="r ${o.d<0?'neg':o.d>0?'pos':''}">${o.d==null?'–':(o.d>0?'+':'')+N(o.d,3)}</td><td class="r ${o.v<0?'neg':''}">${o.v?R(o.v):''}</td></tr>`).join('')}${tot(rows.reduce((a,o)=>a+o.v,0),4)}</tbody></table>`}
   if(m.type==='manufacture'){const used=lines.filter(l=>l.delta<0),made=lines.filter(l=>l.delta>0);
     const t=(L,h)=>`<tr class="sub"><td colspan="4">${h}</td></tr>`+L.map(l=>`<tr><td><b>${esc(lname(l))}</b><small>${esc(l.reason||'')}</small></td><td class="r">${N(l.qty,3)}</td><td>${esc(l.unit||'')}</td><td class="r">${R(l.value)}</td></tr>`).join('');
-    return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Value</th></tr></thead><tbody>${t(used,'Taken out of stock')}${t(made,'Yield added to stock')}<tr class="tot"><td colspan="3">Batch cost</td><td class="r">${R(m.total_value)}</td></tr></tbody></table>`}
+    return `<table class="mvt"><thead><tr><th>Item</th><th class="r">Qty</th><th>Unit</th><th class="r">Value</th></tr></thead><tbody>${t(used,'Taken out of stock')}${t(made,'Yield added to stock')}<tr class="tot"><td colspan="3">Batch cost</td><td class="r">${R(m.total_value)}</td></tr></tbody></table>
+    <div class="mvmeta">${m.expected_qty!=null?`<div><span>Expected yield</span><b>${N(m.expected_qty,3)} ${esc(m.yield_unit||'')}</b></div>`:''}<div><span>Production wastage</span><b>${m.waste_qty>0?`${N(m.waste_qty,3)} ${esc(m.yield_unit||'')} · ${esc(m.waste_reason||'')}`:'None'}</b></div><div><span>Actual yield</span><b>${N(m.yield_qty,3)} ${esc(m.yield_unit||'')}</b></div><div><span>Cost per ${esc(m.yield_unit||'unit')}</span><b>${m.yield_qty>0?R(m.total_value/m.yield_qty):'–'}</b></div></div>`}
   const rs=m.type==='wastage';const op=m.type==='opening';
   return `<table class="mvt"><thead><tr><th>Item</th>${op?'<th>Area</th>':''}<th class="r">Qty</th><th>Unit</th><th class="r">Unit cost</th><th class="r">Value</th>${rs?'<th>Reason</th>':''}</tr></thead><tbody>${lines.map(l=>`<tr><td><b>${esc(lname(l))}</b></td>${op?`<td>${esc(l.area||'')}</td>`:''}<td class="r">${N(l.qty,3)}</td><td>${esc(l.unit||'')}</td><td class="r">${R(l.unit_cost)}</td><td class="r">${R(l.value)}</td>${rs?`<td>${esc(l.reason||'')}</td>`:''}</tr>`).join('')}${`<tr class="tot"><td colspan="${op?5:4}">Total</td><td class="r">${R(lines.reduce((a,l)=>a+Number(l.value||0),0))}</td>${rs?'<td></td>':''}</tr>`}</tbody></table>`}
 function metaHtml(m){return `<div class="mvmeta"><div><span>Date</span><b>${fmtD(m.mdate)}</b></div>${m.type==='transfer'?`<div><span>From</span><b>${esc(coName(m.company))}</b></div><div><span>To</span><b>${esc(coName(m.to_company))}</b></div>`:`<div><span>Business</span><b>${esc(coName(m.company))}</b></div>`}<div><span>Captured by</span><b>${esc(whoIs(m.created_by))}</b></div>${m.notes?`<div class="full"><span>Notes</span><b>${esc(m.notes)}</b></div>`:''}</div>`}
@@ -394,10 +415,10 @@ function printMove(m,lines){
 async function refreshStock(){await load();await loadMoves();renderStock();renderRecipeList();renderRecipe();renderMoves()}
 
 // ----- editors -----
-function showEditor(title,html){$('#v-moves').classList.add('hide');$('#v-mv').classList.remove('hide');
-  $('#v-mv').innerHTML=`<header class="head"><div><button class="link" id="mv-back">← Stock Movements</button><br><span class="eyebrow">${esc(co().name)}</span><h1>${title}</h1></div></header>${html}`;
+function showEditor(title,html,from='moves'){S.edFrom=from;$('#v-moves').classList.add('hide');$('#v-recipes').classList.add('hide');$('#v-mv').classList.remove('hide');
+  $('#v-mv').innerHTML=`<header class="head"><div><button class="link" id="mv-back">← ${from==='recipes'?'Manufacturing':'Stock Movements'}</button><br><span class="eyebrow">${esc(co().name)}</span><h1>${title}</h1></div></header>${html}`;
   $('#mv-back').onclick=()=>{if(S.ed&&S.ed.dirty&&!confirm('Leave without posting? What you captured here will be lost.'))return;backToList()};window.scrollTo(0,0)}
-function backToList(){S.ed=null;S.tk=null;$('#v-mv').classList.add('hide');$('#v-moves').classList.remove('hide');renderMoves()}
+function backToList(){S.ed=null;S.tk=null;$('#v-mv').classList.add('hide');if(S.edFrom==='recipes'){S.rkind='batch';$('#v-recipes').classList.remove('hide');renderRecipeList();renderRecipe()}else{$('#v-moves').classList.remove('hide');renderMoves()}}
 
 // transfer + wastage
 function openLines(type){
@@ -435,13 +456,13 @@ async function postLines(){const E=S.ed;const L=E.lines.filter(l=>+l.qty>0);if(!
 
 // manufacturing (batch recipes; every line editable while making)
 function openMake(rid){
-  S.ed={type:'manufacture',rid:rid||null,batches:1,actual:null,date:today(),notes:'',dirty:false,lines:[],unlinked:[]};
+  S.ed={type:'manufacture',rid:rid||null,batches:1,actual:null,waste:0,wreason:WREASONS[0],date:today(),notes:'',dirty:false,lines:[],unlinked:[]};
   const grp={};for(const r of S.recipes.filter(r=>r.kind==='batch'))(grp[r.category||'Other']??=[]).push(r);
   showEditor('Manufacture a batch',`<div class="mvcard">
    <div class="mvform"><label class="grow">Batch recipe<select id="mk-r"><option value="">Choose a batch recipe…</option>${Object.keys(grp).sort().map(g=>`<optgroup label="${esc(g)}">${grp[g].map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>
     <label>Batches<input id="mk-b" type="number" step="any" min="0" inputmode="decimal" value="1"></label><label>Date<input type="date" id="mk-d" value="${S.ed.date}"></label></div>
-   <div id="mk-body"></div></div>`);
-  $('#mk-r').value=rid||'';$('#mk-r').onchange=e=>{S.ed.rid=+e.target.value||null;S.ed.actual=null;buildMake();drawMake()};
+   <div id="mk-body"></div></div>`,'recipes');
+  $('#mk-r').value=rid||'';$('#mk-r').onchange=e=>{S.ed.rid=+e.target.value||null;S.ed.actual=null;S.ed.waste=0;buildMake();drawMake()};
   $('#mk-b').oninput=e=>{S.ed.batches=+e.target.value||0;S.ed.actual=null;S.ed.dirty=true;scaleMake();drawMake()};$('#mk-d').onchange=e=>S.ed.date=e.target.value;buildMake();drawMake()}
 function buildMake(){const E=S.ed,r=getRec(E.rid);E.lines=[];E.unlinked=[];if(!r)return;
   for(const l of S.lines.filter(x=>x.recipe_id===r.id).sort((a,b)=>a.sort-b.sort)){if(l.no_cost)continue;
@@ -456,16 +477,17 @@ function mkCalc(m){
     const q=c.q/toBase(it.count_size||1,it.count_unit),cost=Number(it.unit_price)||0;return{q,unit:ul(it),cost,value:q*cost,on:S.cnt.get(it.id)||0}}
   const sr=getRec(m.id);const c=convQty({qty:m.qty,unit:m.unit},sr.yield_unit);if(!c)return{warn:`recipe yields ${sr.yield_unit}, not ${m.unit}`};
   const q=c.q/un(sr.yield_unit)[1],cost=rUnit(sr);return{q,unit:sr.yield_unit,cost,value:q*cost,on:S.made.get(sr.id)||0}}
-function mkTotals(){const E=S.ed,r=getRec(E.rid);const exp=(Number(r.yield_qty)||1)*(E.batches||0);const act=E.actual==null?exp:E.actual;
-  const cost=E.lines.reduce((a,m)=>{const c=mkCalc(m);return a+(c.value||0)},0);return{r,exp,act,cost,per:act>0?cost/act:null}}
+const WREASONS=['Trim / offcuts','Burnt or overcooked','Spilled or dropped','Failed quality check','Tasting','Other'];
+function mkTotals(){const E=S.ed,r=getRec(E.rid);const exp=(Number(r.yield_qty)||1)*(E.batches||0);const waste=Number(E.waste)||0;const act=E.actual==null?Math.max(0,exp-waste):E.actual;
+  const cost=E.lines.reduce((a,m)=>{const c=mkCalc(m);return a+(c.value||0)},0);return{r,exp,waste,act,cost,per:act>0?cost/act:null,wcost:exp>0?cost/exp*waste:0,other:exp-waste-act}}
 function drawMake(){const E=S.ed,box=$('#mk-body');const r=getRec(E.rid);
   if(!r){box.innerHTML='<div class="empty sm">Choose a batch recipe to see what it uses.</div>';return}
   const units=m=>{const L=LUNITS.concat(m.unit&&!LUNITS.includes(m.unit)?[m.unit]:[]);return L.map(u=>`<option ${u===m.unit?'selected':''}>${u}</option>`).join('')};
   const rec=m=>m.added?'<em class="tagx">added</em>':m.per==null?'–':`${N(m.per*(E.batches||0),3)} ${esc(m.recUnit)}`;
-  box.innerHTML=`<div class="mkyield"><div><span>Recipe yield</span><b>${N(r.yield_qty)} ${esc(r.yield_unit)} per batch</b><small id="mk-exp"></small></div>
-    <label>Actual yield<span class="qty"><input id="mk-a" type="number" step="any" min="0" inputmode="decimal"><small>${esc(r.yield_unit)}</small></span></label>
-    <div><span>Cost per ${esc(r.yield_unit)}</span><b id="mk-per"></b><small id="mk-var"></small></div>
-    <div><span>Batch cost</span><b id="mk-cost"></b><small>In stock now: ${N(S.made.get(r.id)||0,3)} ${esc(r.yield_unit)}</small></div></div>
+  box.innerHTML=`<div class="mkyield"><div><span>Portion yield</span><b>${N(r.yield_qty)} ${esc(r.yield_unit)} per batch</b><small id="mk-exp"></small></div>
+    <label>Production wastage<span class="qty"><input id="mk-w" type="number" step="any" min="0" inputmode="decimal" value="${E.waste||''}" placeholder="0"><small>${esc(r.yield_unit)}</small></span><select id="mk-wr">${WREASONS.map(x=>`<option ${x===E.wreason?'selected':''}>${x}</option>`).join('')}</select><small id="mk-wc"></small></label>
+    <label>Actual yield into stock<span class="qty"><input id="mk-a" type="number" step="any" min="0" inputmode="decimal"><small>${esc(r.yield_unit)}</small></span><small id="mk-var"></small></label>
+    <div><span>Cost per ${esc(r.yield_unit)}</span><b id="mk-per"></b><small>Batch cost <b id="mk-cost"></b> · in stock now ${N(S.made.get(r.id)||0,3)} ${esc(r.yield_unit)}</small></div></div>
    <p class="hint">The recipe is pulled through for ${N(E.batches)} batch${E.batches==1?'':'es'}. Change any quantity to what you actually used, swap the unit, remove a line, or add something extra.</p>
    <div class="mvlines" id="mk-lines"><div class="mvl hd mk"><span>Ingredient</span><span class="r">Recipe says</span><span class="r">Actually used</span><span class="r">Out of stock</span><span class="r">Cost</span><span></span></div>
    ${E.lines.map((m,i)=>`<div class="mvl mk ${m.edited?'edited':''}" data-i="${i}"><span class="nm"><b>${m.kind==='r'?'↳ ':''}${esc(m.name)}</b>${m.edited?`<small>Changed from recipe · <button class="link" data-reset>use recipe amount</button></small>`:''}</span>
@@ -476,8 +498,10 @@ function drawMake(){const E=S.ed,box=$('#mk-body');const r=getRec(E.rid);
    <div class="skip hide" id="mk-warn"></div>
    <label style="margin-top:14px">Notes<input id="mk-n" value="${esc(E.notes)}" placeholder="e.g. Doubled the cheese, used 1.5 kg mince"></label>
    <div class="mvfoot"><span id="mk-sum"></span><span class="mvbtns"><button class="btn" id="mk-x">Cancel</button><button class="btn fill" id="mk-post">Post manufacturing</button></span></div>`;
-  $('#mk-a').value=E.actual==null?+((Number(r.yield_qty)||1)*(E.batches||0)).toFixed(3):E.actual;
+  $('#mk-a').value=E.actual==null?+mkTotals().act.toFixed(3):E.actual;
   $('#mk-a').addEventListener('input',e=>{E.actual=e.target.value===''?0:+e.target.value;E.dirty=true;mkNums()});
+  $('#mk-w').addEventListener('input',e=>{E.waste=+e.target.value||0;E.dirty=true;if(E.actual==null)$('#mk-a').value=+mkTotals().act.toFixed(3);mkNums()});
+  $('#mk-wr').onchange=e=>E.wreason=e.target.value;
   $$('#mk-lines .mvl[data-i]').forEach(row=>{const m=E.lines[+row.dataset.i];
     const chg=()=>{m.edited=!m.added&&(m.qty!==(m.per==null?null:+(m.per*(E.batches||0)).toFixed(4))||m.unit!==m.recUnit);row.classList.toggle('edited',m.edited);E.dirty=true;mkNums()};
     row.querySelector('.q').addEventListener('input',e=>{m.qty=e.target.value===''?null:+e.target.value;chg()});
@@ -494,9 +518,10 @@ function mkNums(){const E=S.ed;const T=mkTotals();const warns=[];
   $$('#mk-lines .mvl[data-i]').forEach(row=>{const m=E.lines[+row.dataset.i];const c=mkCalc(m);
     if(c.warn){row.querySelector('.out').innerHTML=`<span class="nil">⚠ ${esc(c.warn)}</span>`;row.querySelector('.val').textContent='';warns.push(m.name)}
     else{row.querySelector('.out').innerHTML=`${N(c.q,3)} ${esc(xu(c.unit))}<small class="${c.on-c.q<-0.0005?'neg':'muted'}">left: ${N(c.on-c.q,3)}</small>`;row.querySelector('.val').textContent=R(c.value)}});
-  $('#mk-exp').textContent=`Expected yield: ${N(T.exp,3)} ${T.r.yield_unit}`;
+  $('#mk-exp').textContent=`Expected for ${N(E.batches)} batch${E.batches==1?'':'es'}: ${N(T.exp,3)} ${T.r.yield_unit}`;
   $('#mk-per').textContent=T.per!=null?R(T.per):'–';$('#mk-cost').textContent=R(T.cost);
-  $('#mk-var').textContent=T.act!==T.exp&&T.exp?`Yield variance: ${T.act<T.exp?'−':'+'}${N(Math.abs(T.exp-T.act),3)} ${T.r.yield_unit}`:'';$('#mk-var').className=T.act<T.exp?'neg':'';
+  $('#mk-wc').textContent=T.waste>0?`Wastage cost about ${R(T.wcost)}`:'';$('#mk-wc').className=T.waste>0?'neg':'';
+  const ov=Math.abs(T.other)>0.0005;$('#mk-var').textContent=ov?`Other yield variance: ${T.other>0?'−':'+'}${N(Math.abs(T.other),3)} ${T.r.yield_unit} (not explained by wastage)`:T.waste>0?'Expected yield less wastage':'';$('#mk-var').className=ov&&T.other>0?'neg':'';
   const w=$('#mk-warn');w.classList.toggle('hide',!warns.length);w.innerHTML=warns.length?`<b>${warns.length} line${warns.length>1?'s':''} won't come out of stock</b>${warns.map(x=>`<div>${esc(x)}</div>`).join('')}<small>Fix the quantity or unit above, or remove the line.</small>`:'';
   $('#mk-sum').innerHTML=`Yield: ${N(T.act,3)} ${esc(T.r.yield_unit)} into stock · <b>${R(T.cost)}</b>`}
 async function postMake(){const E=S.ed;const T=mkTotals();if(!T.r)return;if(!(E.batches>0))return toast('Enter how many batches');if(!(T.act>0))return toast('Enter the actual yield');
@@ -504,10 +529,10 @@ async function postMake(){const E=S.ed;const T=mkTotals();if(!T.r)return;if(!(E.
     lines.push({item_id:m.kind==='i'?m.id:null,recipe_id:m.kind==='r'?m.id:null,name:m.name,qty:c.q,unit:c.unit,delta:-c.q,unit_cost:c.cost,value:c.value,
       reason:m.added?`Added: ${N(m.qty,3)} ${m.unit}`:m.edited?`Used ${N(m.qty,3)} ${m.unit} (recipe ${N(m.per*E.batches,3)} ${m.recUnit})`:`Used ${N(m.qty,3)} ${m.unit}`})}
   const skipped=E.lines.filter(m=>mkCalc(m).warn).length;if(skipped&&!confirm(`${skipped} line${skipped>1?'s':''} can't come out of stock (see the warning). Post anyway?`))return;
-  lines.push({recipe_id:T.r.id,name:T.r.name,qty:T.act,unit:T.r.yield_unit,delta:T.act,unit_cost:T.cost/T.act,value:T.cost,reason:'Yield'});
-  $('#mk-post').disabled=true;const {data:id,error}=await sb.rpc('bo_post_movement',{p:{movement:{type:'manufacture',company:S.co,mdate:E.date,recipe_id:T.r.id,batches:E.batches,yield_qty:T.act,yield_unit:T.r.yield_unit,notes:E.notes||null,total_value:T.cost},lines}});
+  lines.push({recipe_id:T.r.id,name:T.r.name,qty:T.act,unit:T.r.yield_unit,delta:T.act,unit_cost:T.cost/T.act,value:T.cost,reason:T.waste>0?`Yield after ${N(T.waste,3)} ${T.r.yield_unit} wastage (${E.wreason})`:'Yield'});
+  $('#mk-post').disabled=true;const {data:id,error}=await sb.rpc('bo_post_movement',{p:{movement:{type:'manufacture',company:S.co,mdate:E.date,recipe_id:T.r.id,batches:E.batches,yield_qty:T.act,yield_unit:T.r.yield_unit,expected_qty:T.exp,waste_qty:T.waste||null,waste_reason:T.waste>0?E.wreason:null,notes:E.notes||null,total_value:T.cost},lines}});
   if(error){$('#mk-post').disabled=false;return toast('Not posted: '+error.message)}
-  toast(`Yield of ${N(T.act,3)} ${T.r.yield_unit} ${T.r.name} added to stock`);S.ed=null;await refreshStock();backToList();openMove(id)}
+  toast(`Yield of ${N(T.act,3)} ${T.r.yield_unit} ${T.r.name} added to stock`);S.ed=null;S.rkind='batch';S.cur='hist';await refreshStock();backToList();openMove(id)}
 
 // stock take
 const MADE='Made items',OTHER='Other';
@@ -571,7 +596,7 @@ function finishTake(){const T=S.tk;const g=new Map();for(const l of T.map.values
   $('#fz-post').onclick=async()=>{$('#fz-post').disabled=true;const {data,error}=await sb.rpc('bo_post_stocktake',{mid:T.m.id,zero_uncounted:!!$('#fz')?.checked});
     if(error){$('#fz-post').disabled=false;return toast('Not posted: '+error.message)}closeDrawer();const id=T.m.id;S.tk=null;await refreshStock();backToList();toast('Stock take posted');openMove(id)}}
 
-$('#b-take').onclick=newTake;$('#b-tr').onclick=()=>openLines('transfer');$('#b-ws').onclick=()=>openLines('wastage');$('#b-mk').onclick=()=>openMake(null);
+$('#b-take').onclick=newTake;$('#b-tr').onclick=()=>openLines('transfer');$('#b-ws').onclick=()=>openLines('wastage')
 
 boot();
 })();

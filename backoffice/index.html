@@ -65,12 +65,13 @@
     <section id="v-recipes" class="hide">
       <header class="head">
         <div><span class="eyebrow" id="co-name2"></span><h1>Recipes</h1></div>
-        <div class="head-act"><button class="btn" id="b-newb">+ Batch recipe</button><button class="btn fill" id="b-newr">+ Menu item</button></div>
+        <div class="head-act wrap" id="r-act"><button class="btn fill" id="b-newr">+ Menu item</button><button class="btn" id="b-newb">+ Batch recipe</button><button class="btn fill" id="b-mk">Manufacture a batch</button></div>
       </header>
+      <div class="rmode" id="rmode"></div>
       <div class="rgrid">
         <div class="rlist">
           <div class="search"><span>⌕</span><input id="rq" placeholder="Search recipes…" autocomplete="off"></div>
-          <div class="kseg" id="rkind"></div><div class="rcats" id="rcats"></div>
+          <div class="rcats" id="rcats"></div>
           <div id="rlist"></div>
         </div>
         <div class="redit" id="redit"><div class="empty">Pick a recipe on the left, or create a new one.<br><br>Ingredients come straight from the Master Stock, so costs stay up to date.</div></div>
@@ -80,10 +81,10 @@
     <section id="v-moves" class="hide">
       <header class="head">
         <div><span class="eyebrow" id="co-name3"></span><h1>Stock Movements</h1></div>
-        <div class="head-act wrap"><button class="btn fill" id="b-take">+ Stock take</button><button class="btn" id="b-tr">+ Transfer</button><button class="btn" id="b-ws">+ Wastage</button><button class="btn" id="b-mk">+ Manufacture</button></div>
+        <div class="head-act wrap"><button class="btn fill" id="b-take">+ Stock take</button><button class="btn" id="b-tr">+ Transfer</button><button class="btn" id="b-ws">+ Wastage</button></div>
       </header>
       <div class="kpis" id="mkpis"></div>
-      <div class="bar"><div class="search"><span>⌕</span><input id="mq" placeholder="Search reference, notes, recipe, branch…" autocomplete="off"></div></div>
+      <div class="bar"><div class="search"><span>⌕</span><input id="mq" placeholder="Search reference, notes, branch…" autocomplete="off"></div></div>
       <div class="rcats" id="mtypes" style="margin-bottom:12px"></div>
       <div class="tablewrap"><table class="grid" id="t-moves">
         <thead><tr><th>Date</th><th>Ref</th><th>Type</th><th>Details</th><th class="r">Value</th><th>By</th><th>Status</th></tr></thead><tbody></tbody></table></div>

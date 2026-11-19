@@ -264,3 +264,16 @@ label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;
 .mvl .nm .link{font-size:11.5px}
 .tagx{font-style:normal;font-size:10.5px;font-weight:800;background:var(--oat);padding:2px 7px;border-radius:99px;color:var(--ink-2)}
 @media (max-width:760px){.seg{grid-template-columns:1fr}.mvl.mk{grid-template-columns:1fr auto}.mvl.mk .rec::before{content:'Recipe: '}}
+/* recipes: menu items vs manufacturing */
+.rmode{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:-4px 0 16px;max-width:640px}
+.rmode button{text-align:left;border:1px solid var(--line);background:var(--flour);border-radius:14px;padding:10px 14px;cursor:pointer;font:inherit;color:var(--ink)}
+.rmode button b{display:block;font-size:15px;font-weight:800}.rmode button b small{font-size:11.5px;color:var(--ink-2);font-weight:700;margin-left:4px}
+.rmode button span{display:block;font-size:12px;color:var(--ink-2);margin-top:2px}
+.rmode button.on{border-color:var(--co);box-shadow:inset 0 0 0 1px var(--co);background:#fff}
+.ritem.hist{border:1px dashed var(--line);margin-bottom:6px}
+.hhead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}.hhead h2{margin:0}
+.kpis.sm{grid-template-columns:repeat(3,minmax(0,1fr))}.kpis.sm .kpi b{font-size:21px}
+#t-batch td small{display:block;font-size:11px}#t-batch tr{cursor:pointer}#t-batch tr.cancelled td{opacity:.5}
+.mkyield select{margin-top:6px;width:100%}.mkyield small.neg{color:var(--bad,#B3261E)}
+@media (max-width:700px){.rmode{grid-template-columns:1fr 1fr;gap:6px}.rmode button span{display:none}.kpis.sm{grid-template-columns:1fr 1fr 1fr;gap:6px}.kpis.sm .kpi{padding:10px}.kpis.sm .kpi b{font-size:17px}}
+.ritem.hist>div{display:block}.ritem.hist small{display:block}
